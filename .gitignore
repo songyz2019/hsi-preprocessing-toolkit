@@ -11,3 +11,4 @@ wheels/
 sample/
 
 uv/
+main.spec

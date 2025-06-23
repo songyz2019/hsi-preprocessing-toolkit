@@ -1,2 +1,2 @@
 @echo off
-.\uv\uv.exe run main.py
+.\uv\uv.exe run src\main.py
