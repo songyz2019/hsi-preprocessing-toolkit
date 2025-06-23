@@ -18,12 +18,11 @@ plt.rcParams['font.family'] = 'SimHei'
 def load_data(
     dat_files :List[gradio.utils.NamedString] | None,
     input_format,
-) -> Tuple[np.ndarray | None, Path | None, dict]:
-    info = {}
+) -> Tuple[np.ndarray | None, Path | None, str]:
+    logging_text = ""
     if dat_files is None or len(dat_files) == 0:
-        info['load_error'] = "No data file provided."
-        return None, None, info
-    
+        return None, None, "No data file provided."
+
     dat_paths = [Path(f.name) for f in dat_files]
     mat_paths = [p for p in dat_paths if p.suffix == '.mat']
     hdr_paths = [p for p in dat_paths if p.suffix == '.hdr']
@@ -33,23 +32,24 @@ def load_data(
         data_path = mat_paths[0]
         data = load_one_key_mat(mat_paths[0])
     elif len(hdr_paths) == 0 or len(raw_paths) == 0:
-        info['load_error_error'] = "请同时上传.hdr文件和无后缀的数据文件. Both .hdr and raw data files are required."
-        return None, None, info
+        return None, None, "请同时上传.hdr文件和无后缀的数据文件. Both .hdr and raw data files are required."
     elif len(hdr_paths) > 0 and len(raw_paths) > 0:
         data_path = raw_paths[0]
-        if data_path.parent != data_path.parent:
-            shutil.copy(data_path, data_path.with_suffix('.hdr'))
+        hdr_path = hdr_paths[0]
+        if hdr_path.parent != data_path.parent:
+            shutil.copy(hdr_path, data_path.with_suffix('.hdr'))
+        print(f"Loading {data_path}")
         with rasterio_open(data_path, 'r') as src:
             data = src.read()
+        print(f"Loaded {data_path}")
     else:
-        info['load_error_error'] = "无法识别数据文件格式. Unrecognized data file format."
-        return None, None, info
+        return None, None, "无法识别数据文件格式. Unrecognized data file format."
 
     # Convert input format
     if input_format == 'CHW':
         data = einops.rearrange(data, 'c h w -> h w c') # type: ignore
-        
-    return data, data_path, info # type: ignore
+
+    return data, data_path, "" # type: ignore
 
 
 # HWC -> HWC
@@ -69,18 +69,20 @@ def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, r
 def gr_on_file_upload(
         dat_files :List[gradio.utils.NamedString] | None,
         input_format, 
-        manual_normalize: bool = False, normalize_min: float = 0, normalize_max: float = 2**16-1,
-        wavelength_from: int = 400, wavelength_to: int = 1000
+        manual_normalize: bool, normalize_min: float, normalize_max: float,
+        wavelength_from: int, wavelength_to: int,
+        logging_text: str
     ):
-    data, data_path, info = load_data(dat_files, input_format)
+    data, data_path, _logging_text = load_data(dat_files, input_format)
+    logging_text += _logging_text + "\n"
     if data is None:
-        return None, None, None, {"upload_error": "数据加载失败. Data loading failed."}
+        return None, None, None, logging_text+"\nupload error"
     if not manual_normalize:
         rgb = hsi2rgb(data, wavelength_range=(wavelength_from, wavelength_to), input_format='HWC', output_format='HWC', to_u8np=True)
     else:
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
-    return rgb, data, data_path, info
+    return rgb, data, data_path, logging_text
 
 def gr_preview(
         preview_img,
@@ -111,8 +113,8 @@ def gr_convert(
         crop_top: int, crop_left: int, crop_bottom: int, crop_right: int, 
         rotate_deg: int, rotate_reshape: bool,
         mat_dtype, output_format, mat_key, compress_mat: bool,
+        logging_text: str
     ):
-    info = {}
     # Load `data`
     if output_format == 'Same as Input':
         output_format = input_format
@@ -123,34 +125,35 @@ def gr_convert(
     
     # Convert to mat
     mat_file = data_path.with_stem(data_path.stem + '_converted').with_suffix('.mat')
-    print(f"Converting {data_path} to  {mat_file}...", end=' ')
     if mat_dtype == "default":
-        mat_dat = data
+        data_processed = data
     else:
-        mat_dat = data.astype(mat_dtype)
+        data_processed = data.astype(mat_dtype)
+
     if output_format == 'CHW':
-        mat_dat = einops.rearrange(mat_dat, 'h w c -> c h w')
-    savemat(mat_file, {mat_key: data}, do_compression=compress_mat, format='5')  
-    print(f"Done")
+        mat_dat_sav = einops.rearrange(data_processed, 'h w c -> c h w')
+    else:
+        mat_dat_sav = data_processed
+    savemat(mat_file, {mat_key: mat_dat_sav}, do_compression=compress_mat, format='5')  
     
-    info |= {
+    info = {
         'original_shape': str(data.shape),
         'original_data_type': str(data.dtype),
         'original_reflection_range': [float(data.min()), float(data.max())],
         'original_reflection_mean': float(data.mean()),
         'original_reflection_std': float(data.std()),
         'wavelength_range (assumed)': (400, 1000),
-        'output_shape': str(mat_dat.shape),
-        'output_data_type': str(mat_dat.dtype),
-        'output_reflection_range': [float(mat_dat.min()), float(mat_dat.max())],
-        'output_reflection_mean': float(mat_dat.mean()),
-        'output_reflection_std': float(mat_dat.std()),
+        'output_shape': str(mat_dat_sav.shape),
+        'output_data_type': str(mat_dat_sav.dtype),
+        'output_reflection_range': [float(mat_dat_sav.min()), float(mat_dat_sav.max())],
+        'output_reflection_mean': float(mat_dat_sav.mean()),
+        'output_reflection_std': float(mat_dat_sav.std()),
     }
 
-    info_str = "\n".join([f"{k}: {v}" for k, v in info.items()])
+    logging_text += "\n".join([f"{k}: {v}" for k, v in info.items()]) + "\n"
 
     # Gradio will handle the visibility of mat_file_output when a file path is returned
-    return str(mat_file), info_str
+    return data_processed, str(mat_file), logging_text
 
 
 def gr_on_img_clicked(evt: gradio.SelectData, data, state_select_location, wavelength_from: int, wavelength_to :int):
@@ -192,7 +195,47 @@ if __name__ == "__main__":
                         type="filepath",
                     )
 
+                    manual_normalize = gradio.Checkbox(
+                        label="手动归一化(仅影响预览结果) Manual Normalize",
+                        value=False,
+                    )
+                    with gradio.Row():
+                        normalize_min = gradio.Number(
+                            label="归一化最小值 Normalize Min",
+                            value=0,
+                            precision=1,
+                            visible=False,
+                        )
+                        normalize_max = gradio.Number(
+                            label="归一化最大值 Normalize Max",
+                            value=2**16-1,
+                            precision=1,
+                            visible=False,
+                        )
 
+                    def toggle_normalize_fields(manual_normalize):
+                        return (
+                            gradio.update(visible=manual_normalize),
+                            gradio.update(visible=manual_normalize),
+                        )
+                    manual_normalize.change(
+                        fn=toggle_normalize_fields,
+                        inputs=[manual_normalize],
+                        outputs=[normalize_min, normalize_max],
+                    )
+                    with gradio.Row():
+                        wavelength_from = gradio.Number(
+                            label="波长范围起始 Wavelength Range Start",
+                            value=400,
+                            precision=1,
+                        )
+                        wavelength_to = gradio.Number(
+                            label="波长范围结束 Wavelength Range End",
+                            value=1000,
+                            precision=1,
+                        )
+                    reload_btn = gradio.Button("重新加载", variant="primary")
+                
                 with gradio.Column(variant="panel"):
                     gradio.Markdown("## 处理")
                     with gradio.Column():
@@ -231,50 +274,8 @@ if __name__ == "__main__":
                             label="旋转时调整形状 Rotate Reshape",
                             value=True
                         )
-                    preview_btn  = gradio.Button("处理效果预览", variant="primary")
+                    preview_btn  = gradio.Button("预览", variant="primary")
                     
-                    
-                with gradio.Column(variant="panel"):
-                    gradio.Markdown("## 预览设置 Preview Settings")
-                    manual_normalize = gradio.Checkbox(
-                        label="合成RGB图像时手动归一化 Manual Normalize",
-                        value=False,
-                    )
-                    normalize_min = gradio.Number(
-                        label="归一化最小值 Normalize Min",
-                        value=0,
-                        precision=1,
-                        visible=False,
-                    )
-                    normalize_max = gradio.Number(
-                        label="归一化最大值 Normalize Max",
-                        value=2**16-1,
-                        precision=1,
-                        visible=False,
-                    )
-
-                    def toggle_normalize_fields(manual_normalize):
-                        return (
-                            gradio.update(visible=manual_normalize),
-                            gradio.update(visible=manual_normalize),
-                        )
-                    manual_normalize.change(
-                        fn=toggle_normalize_fields,
-                        inputs=[manual_normalize],
-                        outputs=[normalize_min, normalize_max],
-                    )
-
-                    wavelength_from = gradio.Number(
-                        label="波长范围起始 Wavelength Range Start",
-                        value=400,
-                        precision=1,
-                    )
-                    wavelength_to = gradio.Number(
-                        label="波长范围结束 Wavelength Range End",
-                        value=1000,
-                        precision=1,
-                    )
-                    reload_btn = gradio.Button("重新加载", variant="primary")
 
 
                 # MAT Output Options
@@ -298,7 +299,7 @@ if __name__ == "__main__":
                         label="启用mat文件压缩 Produce Compressed MAT File",
                         value=True
                     )
-                    convert_btn  = gradio.Button("转换为MAT", variant="primary")
+                    convert_btn  = gradio.Button("应用处理效果", variant="primary")
 
             with gradio.Column(variant="panel"):
                 gradio.Markdown("## 输出结果 Output")   
@@ -308,25 +309,28 @@ if __name__ == "__main__":
                     type="filepath",
                     interactive=False
                 )
-            with gradio.Column(variant="panel"):
-                gradio.Markdown("## 光谱选择 Spectral Analysis")
-                spectral_plot = gradio.Plot(
-                    label="光谱图 Spectral Plot",
-                    visible=True,
-                )
-                clear_plot_btn = gradio.Button(
-                    "清空光谱 Clear Spectral Plot",
-                    variant="secondary",
-                )
-                download_select_spectral = gradio.DownloadButton(
-                    "下载选中光谱 Download Selected Spectra",
-                    variant="primary",
-                )
-                info_output = gradio.Textbox(
-                    label="信息 Info",
-                )
+                with gradio.Column(variant="panel"):
+                    gradio.Markdown("## 光谱选择 Spectral Selection")
+                    spectral_plot = gradio.Plot(
+                        label="光谱图 Spectral Plot",
+                        visible=True,
+                    )
+                    clear_plot_btn = gradio.Button(
+                        "清空光谱 Clear Spectral Plot",
+                        variant="secondary",
+                    )
+                    download_select_spectral = gradio.DownloadButton(
+                        "下载选中光谱 Download Selected Spectra",
+                        variant="primary",
+                    )
+                    logging_text = gradio.Textbox(
+                        label="信息 Info",
+                    )
         
-        state_data = gradio.State(
+        state_original_data = gradio.State(
+            value=None,
+        )
+        state_processed_data = gradio.State(
             value=None,
         )
         state_data_path = gradio.State(
@@ -335,37 +339,36 @@ if __name__ == "__main__":
         state_select_location = gradio.State(
             value=[],
         )
+        state_rgb = gradio.State(
+            value=None,
+        )
 
         # Bind functions
         dat_files.upload(
             fn=gr_on_file_upload,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[preview_img, state_data, state_data_path, info_output]
-        )
-        input_format.change(
-            fn=gr_on_file_upload,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[preview_img, state_data, state_data_path, info_output]
+            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to, logging_text],
+            outputs=[state_rgb, state_original_data, state_data_path, logging_text]
         )
         reload_btn.click(
             fn=gr_on_file_upload,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[preview_img, state_data, state_data_path, info_output]
+            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to, logging_text],
+            outputs=[state_rgb, state_original_data, state_data_path, logging_text]
         )
         convert_btn.click(
             fn=gr_convert,
             inputs=[
-                state_data, state_data_path,
+                state_original_data, state_data_path,
                 crop_top, crop_left, crop_bottom, crop_right,
                 rotate_deg, rotate_reshape,
                 mat_dtype, output_format, mat_key, compress_mat,
+                logging_text
             ],
-            outputs=[mat_file_output, info_output]
+            outputs=[state_processed_data ,mat_file_output, logging_text]
         )
         preview_btn.click(
             fn=gr_preview,
             inputs=[
-                preview_img,
+                state_rgb,
                 crop_top, crop_left, crop_bottom, crop_right,
                 rotate_deg, rotate_reshape,
             ],
@@ -373,7 +376,7 @@ if __name__ == "__main__":
         )
         preview_img.select(
             fn=gr_on_img_clicked,
-            inputs=[state_data, state_select_location, wavelength_from, wavelength_to],
+            inputs=[state_processed_data, state_select_location, wavelength_from, wavelength_to],
             outputs=[spectral_plot, state_select_location]
         )
         clear_plot_btn.click(
@@ -382,7 +385,7 @@ if __name__ == "__main__":
         )
         download_select_spectral.click(
             fn=gr_download_selected_spectral,
-            inputs=[state_data, state_select_location, state_data_path],
+            inputs=[state_processed_data, state_select_location, state_data_path],
             outputs=[download_select_spectral]
         )
 

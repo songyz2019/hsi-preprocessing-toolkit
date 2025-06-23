@@ -1,1 +1,0 @@
-FROM astral-uv:latest
