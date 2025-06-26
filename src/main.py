@@ -99,12 +99,16 @@ def gr_download_selected_spectral(data, state_select_location, data_path):
     
     dat_path = Path(data_path.name)
     result = []
-    for loc in state_select_location:
-        result.append(data[loc[1], loc[0], :])
+    result_location = []
+    for (row, col) in state_select_location:
+        result.append(data[row, col,:])
+        result_location.append([row, col]) 
     
-    result = np.array(result)  # Convert to numpy array
+    result = np.array(result)
+    result_location = np.array(result_location)
+
     mat_path = dat_path.with_stem(dat_path.stem + '_selected_spectral').with_suffix('.mat')
-    savemat(mat_path, {'data': result}, do_compression=True, format='5')
+    savemat(mat_path, {'data': result, 'location': result_location}, do_compression=True, format='5')
     
     return str(mat_path)  # Return string path for DownloadButton
 
@@ -142,7 +146,6 @@ def gr_convert(
         'original_reflection_range': [float(data.min()), float(data.max())],
         'original_reflection_mean': float(data.mean()),
         'original_reflection_std': float(data.std()),
-        'wavelength_range (assumed)': (400, 1000),
         'output_shape': str(mat_dat_sav.shape),
         'output_data_type': str(mat_dat_sav.dtype),
         'output_reflection_range': [float(mat_dat_sav.min()), float(mat_dat_sav.max())],
@@ -156,28 +159,27 @@ def gr_convert(
     return data_processed, str(mat_file), logging_text
 
 
-def gr_on_img_clicked(evt: gradio.SelectData, data, state_select_location, wavelength_from: int, wavelength_to :int):
+def gr_on_img_clicked(evt: gradio.SelectData, data, state_select_location, wavelength_from: int, wavelength_to :int, plot_hint: str):
     """绘制选中像素的光谱曲线"""
     if data is None:
         return None, state_select_location
     if state_select_location is None:
         state_select_location = []
-    x, y = evt.index
-    state_select_location.append((x, y))
+    col, row = evt.index
+    state_select_location.append((row, col)) # WHY?
 
     wavelengths = np.linspace(wavelength_from, wavelength_to, data.shape[-1])
     fig, ax = plt.subplots(figsize=(10, 6))
-    for loc in state_select_location:
-        ax.plot(wavelengths, data[loc[1], loc[0], :], 'b-', linewidth=2)
-    ax.set_xlabel('波长 Wavelength (nm)')
-    ax.set_ylabel('反射率 Reflectance')
+    for (row, col) in state_select_location:
+        ax.plot(wavelengths, data[row, col, :], plot_hint ,linewidth=2)
+    ax.set_xlabel('Wavelength')
+    ax.set_ylabel('Reflectance')
     plt.tight_layout()
     return fig, state_select_location
 
 
 if __name__ == "__main__":
     with gradio.Blocks(title="HDR TO MAT") as demo:
-        gradio.Markdown("# HDR TO MAT")
         with gradio.Row():
             with gradio.Column():
                 with gradio.Column(variant="panel"):
@@ -301,32 +303,42 @@ if __name__ == "__main__":
                     )
                     convert_btn  = gradio.Button("应用处理效果", variant="primary")
 
-            with gradio.Column(variant="panel"):
-                gradio.Markdown("## 输出结果 Output")   
-                preview_img = gradio.Image(label="预览 Preview", format="png", height="auto", width="auto", interactive=False)
-                mat_file_output = gradio.File(
-                    label="MAT File",
-                    type="filepath",
-                    interactive=False
-                )
+            with gradio.Column():
+                with gradio.Column(variant="panel"):
+                    gradio.Markdown("## 输出结果 Output")   
+                    preview_img = gradio.Image(label="预览 Preview", format="png", height="auto", width="auto", interactive=False)
+                    mat_file_output = gradio.File(
+                        label="MAT File",
+                        type="filepath",
+                        interactive=False
+                    )
+                
                 with gradio.Column(variant="panel"):
                     gradio.Markdown("## 光谱选择 Spectral Selection")
                     spectral_plot = gradio.Plot(
                         label="光谱图 Spectral Plot",
                         visible=True,
                     )
-                    clear_plot_btn = gradio.Button(
-                        "清空光谱 Clear Spectral Plot",
-                        variant="secondary",
+                    plot_hint = gradio.Textbox(
+                        label="样式 Style",
+                        value='b-',
                     )
-                    download_select_spectral = gradio.DownloadButton(
-                        "下载选中光谱 Download Selected Spectra",
-                        variant="primary",
-                    )
+                    with gradio.Row():
+                        clear_plot_btn = gradio.Button(
+                            "清空 Clear",
+                            variant="secondary",
+                        )
+                        download_select_spectral = gradio.DownloadButton(
+                            "下载 Download",
+                            variant="primary",
+                        )
+
+                with gradio.Column(variant="panel"):
+                    gradio.Markdown("## 日志 Log")
                     logging_text = gradio.Textbox(
                         label="信息 Info",
                     )
-        
+    
         state_original_data = gradio.State(
             value=None,
         )
@@ -376,7 +388,7 @@ if __name__ == "__main__":
         )
         preview_img.select(
             fn=gr_on_img_clicked,
-            inputs=[state_processed_data, state_select_location, wavelength_from, wavelength_to],
+            inputs=[state_processed_data, state_select_location, wavelength_from, wavelength_to, plot_hint],
             outputs=[spectral_plot, state_select_location]
         )
         clear_plot_btn.click(
