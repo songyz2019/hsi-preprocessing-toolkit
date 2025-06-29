@@ -12,16 +12,25 @@ from scipy.ndimage import rotate
 from rs_fusion_datasets.util.fileio import load_one_key_mat
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float, Int
+from enum import Enum
 plt.rcParams['font.family'] = 'SimHei'
+
+
+class AppState(Enum):
+    INITIAL = -1
+    NOT_LOADED = 0
+    LOADING = 1
+    LOADED = 2
+    PREVIEWED = 3
+    COVERTED = 4
 
 # Void -> HWC
 def load_data(
     dat_files :List[gradio.utils.NamedString] | None,
     input_format,
-) -> Tuple[np.ndarray | None, Path | None, str]:
-    logging_text = ""
+) -> Tuple[np.ndarray | None, Path | None]:
     if dat_files is None or len(dat_files) == 0:
-        return None, None, "No data file provided."
+        raise gradio.Error("No data file provided. 请上传数据文件. Please upload a data file.")
 
     dat_paths = [Path(f.name) for f in dat_files]
     mat_paths = [p for p in dat_paths if p.suffix == '.mat']
@@ -32,7 +41,7 @@ def load_data(
         data_path = mat_paths[0]
         data = load_one_key_mat(mat_paths[0])
     elif len(hdr_paths) == 0 or len(raw_paths) == 0:
-        return None, None, "请同时上传.hdr文件和无后缀的数据文件. Both .hdr and raw data files are required."
+        raise gradio.Error("Both .hdr and raw data files are required. Only one is provided.")
     elif len(hdr_paths) > 0 and len(raw_paths) > 0:
         data_path = raw_paths[0]
         hdr_path = hdr_paths[0]
@@ -43,13 +52,17 @@ def load_data(
             data = src.read()
         print(f"Loaded {data_path}")
     else:
-        return None, None, "无法识别数据文件格式. Unrecognized data file format."
+        raise gradio.Error("Unknown file format")
 
-    # Convert input format
+    if data is None:
+        raise gradio.Error("Data loading failed.")
+    elif len(data.shape) != 3:
+        raise gradio.Error(f"Data shape {data.shape} is not valid. Expected 3D array.")
+
     if input_format == 'CHW':
-        data = einops.rearrange(data, 'c h w -> h w c') # type: ignore
+        data = einops.rearrange(data, 'c h w -> h w c')
 
-    return data, data_path, "" # type: ignore
+    return data, data_path
 
 
 # HWC -> HWC
@@ -66,23 +79,36 @@ def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, r
 
     return img
 
+def update_ui(state_app_state: AppState):
+    gradio.Info(f"App state changed to {state_app_state.name}")
+    
+    preview_visible = state_app_state in [AppState.LOADED, AppState.PREVIEWED, AppState.COVERTED]
+    convert_visible = state_app_state in [AppState.PREVIEWED, AppState.COVERTED]
+    plot_visible = state_app_state in [AppState.COVERTED]
+    
+    return (
+        gradio.update(visible=preview_visible),
+        gradio.update(visible=convert_visible),
+        gradio.update(visible=plot_visible)
+    )
+
 def gr_on_file_upload(
         dat_files :List[gradio.utils.NamedString] | None,
         input_format, 
         manual_normalize: bool, normalize_min: float, normalize_max: float,
         wavelength_from: int, wavelength_to: int,
-        logging_text: str
     ):
-    data, data_path, _logging_text = load_data(dat_files, input_format)
-    logging_text += _logging_text + "\n"
+    gradio.Info("Loading data...")
+    data, data_path = load_data(dat_files, input_format)
     if data is None:
-        return None, None, None, logging_text+"\nupload error"
+        raise gradio.Error("No data file provided or data loading failed.")
     if not manual_normalize:
         rgb = hsi2rgb(data, wavelength_range=(wavelength_from, wavelength_to), input_format='HWC', output_format='HWC', to_u8np=True)
     else:
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
-    return rgb, data, data_path, logging_text
+    gradio.Info(f"Data loaded")
+    return rgb, data, data_path, AppState.LOADED
 
 def gr_preview(
         preview_img,
@@ -91,7 +117,7 @@ def gr_preview(
     ):
     return process_img(
         preview_img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, rotate_reshape
-    )
+    ), AppState.PREVIEWED
 
 def gr_download_selected_spectral(data, state_select_location, data_path):
     if not state_select_location or len(state_select_location) == 0:
@@ -156,7 +182,7 @@ def gr_convert(
     logging_text += "\n".join([f"{k}: {v}" for k, v in info.items()]) + "\n"
 
     # Gradio will handle the visibility of mat_file_output when a file path is returned
-    return data_processed, str(mat_file), logging_text
+    return data_processed, str(mat_file), logging_text, AppState.COVERTED
 
 
 def gr_on_img_clicked(evt: gradio.SelectData, data, state_select_location, wavelength_from: int, wavelength_to :int, plot_hint: str):
@@ -179,6 +205,13 @@ def gr_on_img_clicked(evt: gradio.SelectData, data, state_select_location, wavel
 
 
 if __name__ == "__main__":
+    state_app_state = gradio.State(value=AppState.INITIAL)
+    state_original_data = gradio.State(value=None,)
+    state_processed_data = gradio.State(value=None,)
+    state_data_path = gradio.State(value=None,)
+    state_selected_location = gradio.State(value=[],)
+    state_rgb = gradio.State(value=None,)
+
     with gradio.Blocks(title="HDR TO MAT") as demo:
         with gradio.Row():
             with gradio.Column():
@@ -238,7 +271,7 @@ if __name__ == "__main__":
                         )
                     reload_btn = gradio.Button("重新加载", variant="primary")
                 
-                with gradio.Column(variant="panel"):
+                with gradio.Column(variant="panel", visible=False) as preview_panel:
                     gradio.Markdown("## 处理")
                     with gradio.Column():
                         gradio.Markdown("### 裁切 Crop")
@@ -279,9 +312,7 @@ if __name__ == "__main__":
                     preview_btn  = gradio.Button("预览", variant="primary")
                     
 
-
-                # MAT Output Options
-                with gradio.Column(variant="panel"):
+                with gradio.Column(variant="panel", visible=False) as convert_panel:
                     gradio.Markdown("## 输出选项")
                     mat_dtype = gradio.Radio(
                         label="mat文件数据类型 MAT Data Type",
@@ -313,7 +344,7 @@ if __name__ == "__main__":
                         interactive=False
                     )
                 
-                with gradio.Column(variant="panel"):
+                with gradio.Column(variant="panel", visible=False) as plot_panel:
                     gradio.Markdown("## 光谱选择 Spectral Selection")
                     spectral_plot = gradio.Plot(
                         label="光谱图 Spectral Plot",
@@ -338,33 +369,16 @@ if __name__ == "__main__":
                     logging_text = gradio.Textbox(
                         label="信息 Info",
                     )
-    
-        state_original_data = gradio.State(
-            value=None,
-        )
-        state_processed_data = gradio.State(
-            value=None,
-        )
-        state_data_path = gradio.State(
-            value=None,
-        )
-        state_select_location = gradio.State(
-            value=[],
-        )
-        state_rgb = gradio.State(
-            value=None,
-        )
 
-        # Bind functions
         dat_files.upload(
             fn=gr_on_file_upload,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to, logging_text],
-            outputs=[state_rgb, state_original_data, state_data_path, logging_text]
+            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
+            outputs=[state_rgb, state_original_data, state_data_path, state_app_state]
         )
         reload_btn.click(
             fn=gr_on_file_upload,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to, logging_text],
-            outputs=[state_rgb, state_original_data, state_data_path, logging_text]
+            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
+            outputs=[state_rgb, state_original_data, state_data_path, state_app_state]
         )
         convert_btn.click(
             fn=gr_convert,
@@ -375,7 +389,7 @@ if __name__ == "__main__":
                 mat_dtype, output_format, mat_key, compress_mat,
                 logging_text
             ],
-            outputs=[state_processed_data ,mat_file_output, logging_text]
+            outputs=[state_processed_data ,mat_file_output, logging_text, state_app_state]
         )
         preview_btn.click(
             fn=gr_preview,
@@ -384,20 +398,20 @@ if __name__ == "__main__":
                 crop_top, crop_left, crop_bottom, crop_right,
                 rotate_deg, rotate_reshape,
             ],
-            outputs=[preview_img]
+            outputs=[preview_img, state_app_state]
         )
         preview_img.select(
             fn=gr_on_img_clicked,
-            inputs=[state_processed_data, state_select_location, wavelength_from, wavelength_to, plot_hint],
-            outputs=[spectral_plot, state_select_location]
+            inputs=[state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],
+            outputs=[spectral_plot, state_selected_location]
         )
         clear_plot_btn.click(
             fn=lambda: (None, []),
-            outputs=[spectral_plot, state_select_location]
+            outputs=[spectral_plot, state_selected_location]
         )
         download_select_spectral.click(
             fn=gr_download_selected_spectral,
-            inputs=[state_processed_data, state_select_location, state_data_path],
+            inputs=[state_processed_data, state_selected_location, state_data_path],
             outputs=[download_select_spectral]
         )
 
