@@ -1,18 +1,26 @@
-# HDR2MAT
+# HSI Preprocessing Toolkit
 
-Convert HSI raw data (RAW data file + HDR file) to mat file, with clipping and data convertion support.  
-快速将原始高光谱采集数据转换为mat文件。
+A Hyperspectral Preprocessing Toolkit that
+1. Read the raw data from the HSI camera, and convert it into `.mat` file
+2. Read the `.mat` file
+3. Preview HSI, and convert it to RGB `.png` file
+4. Crop and rotate the HSI and preview in realtime
+5. Select spectrals of interest visually and save them into a `.mat` file
 
 ![](asset/screenshot.jpg)
-
-# 使用方法
-1. 从GitHub Release下载 `.zip`文件并解压
-2. 双击`一键启动.cmd`
 
 
 ## Usage
 1. Download from GitHub release
-2. Double click the `.cmd` file
+2. Double click the `start.cmd` file
+
+## Credit
+1. [uv](https://docs.astral.sh/uv/) for providing a new reliable solution for Python application distribution.  
+2. `gradio` for modern Python Data Science UI 
+3. `rasterio` for remote sensing data reading
+4. `scipy`, `numpy`, `matplotlib` and `einops`
+5. For more projects, see `pyproject.toml`
+
 
 ## License
 
