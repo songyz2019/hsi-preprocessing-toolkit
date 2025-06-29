@@ -6,10 +6,9 @@ import gradio.utils
 import numpy as np
 import matplotlib.pyplot as plt
 from rasterio import open as rasterio_open
-from scipy.io import savemat
+from scipy.io import savemat, loadmat
 import gradio
 from scipy.ndimage import rotate
-from rs_fusion_datasets.util.fileio import load_one_key_mat
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float, Int
 from enum import Enum
@@ -51,12 +50,13 @@ i18n = gradio.I18n(**{
         "output_results": "Output Results",
         "mat_file": "MAT File",
         "info": "Info",
-        "same_as_input": "Same as Input"
+        "same_as_input": "Same",
+        "auto_detect": "Auto Detect",
     },
     'zh-CN':{
         "title": "高光谱图像预处理工具箱",
         "load": "加载",
-        "upload_instructions": "**应上传以下两种格式中的一种**\n1. 一个.hdr文件 + 一个无后缀的数据文件\n2. 一个.mat文件",
+        "upload_instructions": "**应上传以下两种格式中的一种**\n1. 同时上传一个.hdr文件 + 一个无后缀的数据文件\n2. 一个.mat文件",
         "input_format": "输入数据形状",
         "data_files": "数据文件",
         "manual_normalize": "手动归一化(仅影响预览结果)",
@@ -87,7 +87,8 @@ i18n = gradio.I18n(**{
         "output_results": "输出结果",
         "mat_file": "MAT文件",
         "info": "信息",
-        "same_as_input": "与输入相同"
+        "same_as_input": "与输入相同",
+        "auto_detect": "自动检测",
     }
 })
 
@@ -100,7 +101,7 @@ class AppState(Enum):
 # Void -> HWC
 def load_data(
     dat_files :List[gradio.utils.NamedString] | None,
-    input_format,
+    input_format, mat_key: str | None = None
 ) -> Tuple[np.ndarray | None, Path | None]:
     if dat_files is None or len(dat_files) == 0:
         raise gradio.Error("No data file provided. 请上传数据文件. Please upload a data file.")
@@ -112,7 +113,17 @@ def load_data(
 
     if len(mat_paths) > 0:
         data_path = mat_paths[0]
-        data = load_one_key_mat(mat_paths[0])
+        mat_dat = loadmat(mat_paths[0], squeeze_me=True, mat_dtype=True, struct_as_record=False)
+        mat_keys = [x for x in mat_dat.keys() if not x.startswith('__') and not x.endswith('__')]
+        if mat_key is None or mat_key == '':
+            mat_key = mat_keys[0]
+            if len(mat_keys) >= 2:
+                gradio.Warning(f"Multiple keys found: {mat_keys}. Using: {mat_key}")
+        else:
+            if mat_key not in mat_dat:
+                raise gradio.Error(f"Key '{mat_key}' not found in the MAT file. Available keys: {mat_keys}")
+        data = mat_dat[mat_key]
+    
     elif len(hdr_paths) == 0 or len(raw_paths) == 0:
         raise gradio.Error("Both .hdr and raw data files are required. Only one is provided.")
     elif len(hdr_paths) > 0 and len(raw_paths) > 0:
@@ -167,11 +178,11 @@ def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg):
 
 def gr_load(
         dat_files :List[gradio.utils.NamedString] | None,
-        input_format, 
+        input_format, input_mat_key: str | None,
         manual_normalize: bool, normalize_min: float, normalize_max: float,
         wavelength_from: int, wavelength_to: int,
     ):
-    data, data_path = load_data(dat_files, input_format)
+    data, data_path = load_data(dat_files, input_format, input_mat_key)
     if data is None:
         raise gradio.Error("No data file provided or data loading failed.")
     gradio.Info("Loading data...")
@@ -231,7 +242,7 @@ def gr_convert(
         mat_dtype, output_format, mat_key, compress_mat: bool,
         logging_text: str
     ):
-    if output_format == 'Same as Input':
+    if output_format == 'same':
         output_format = input_format
     
     data = process_img(
@@ -302,7 +313,12 @@ def gr_on_img_clicked(evt: gradio.SelectData, state_figure :tuple, data, state_s
 
 
 if __name__ == "__main__":
-    with gradio.Blocks(title="hsi-preprocessing-toolkit") as demo:
+    theme = gradio.themes.Default(primary_hue='cyan').set(
+        button_primary_background_fill='#39c5bb',
+        button_primary_background_fill_hover="#30A8A0",
+    )
+
+    with gradio.Blocks(title="hsi-preprocessing-toolkit", theme=theme) as demo:
         state_app_state = gradio.State(value=AppState.NOT_LOADED)
         state_original_data = gradio.State(value=None)
         state_processed_data = gradio.State(value=None)
@@ -315,17 +331,23 @@ if __name__ == "__main__":
             with gradio.Column():
                 with gradio.Accordion(i18n("load")) as load_panel:
                     gradio.Markdown(i18n("upload_instructions"))
-                    input_format = gradio.Radio(
-                        label=i18n("input_format"),
-                        choices=['HWC', 'CHW'],
-                        value='CHW'
-                    )
+                    with gradio.Row():
+                        input_format = gradio.Radio(
+                            label=i18n("input_format"),
+                            choices=['HWC', 'CHW'],
+                            value='CHW'
+                        )
+                        input_mat_key = gradio.Textbox(
+                            label=i18n("mat_key"),
+                            value=None,
+                            placeholder=i18n("auto_detect"),
+                            visible=True,
+                        )
                     dat_files = gradio.File(
                         label=i18n("data_files"),
                         file_count="multiple",
                         type="filepath",
                     )
-
                     manual_normalize = gradio.Checkbox(
                         label=i18n("manual_normalize"),
                         value=False,
@@ -413,13 +435,17 @@ if __name__ == "__main__":
                 with gradio.Accordion(i18n("apply_processing"), visible=False) as convert_panel:
                     mat_dtype = gradio.Radio(
                         label=i18n("mat_data_type"),
-                        choices=["default", "uint8", "uint16", "float32"],
-                        value="default"
+                        choices=["same", "uint8", "uint16", "float32"],
+                        value="float32"
                     )
                     output_format = gradio.Radio(
                         label=i18n("mat_format"),
-                        choices=['Same as Input', 'HWC', 'CHW'],
-                        value='Same as Input'
+                        choices=[
+                            'same', 
+                            'HWC', 
+                            'CHW'
+                        ],
+                        value='same'
                     )
                     mat_key = gradio.Text(
                         label=i18n("mat_key"),
@@ -474,7 +500,7 @@ if __name__ == "__main__":
         # )
         reload_btn.click(
             fn=gr_load,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
+            inputs=[dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
             outputs=[state_original_rgb, state_original_data, state_data_path, state_app_state, logging_text]
         )
         convert_btn.click(
