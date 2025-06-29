@@ -13,13 +13,86 @@ from rs_fusion_datasets.util.fileio import load_one_key_mat
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float, Int
 from enum import Enum
+import pandas as pd
 plt.rcParams['font.family'] = 'SimHei'
 
+i18n = gradio.I18n(**{
+    'en': {
+        "title": "hsi-preprocessing-toolkit",
+        "load": "Load",
+        "upload_instructions": "**Upload one of the following formats:**\n1. One .hdr file + one raw data file without extension\n2. One .mat file",
+        "input_format": "Input Image Shape Format",
+        "data_files": "Data Files",
+        "manual_normalize": "Manual Normalize (affects preview only)",
+        "normalize_min": "Normalize Min",
+        "normalize_max": "Normalize Max",
+        "wavelength_start": "Wavelength Range Start",
+        "wavelength_end": "Wavelength Range End",
+        "processing": "Processing",
+        "crop": "Crop",
+        "top": "Top",
+        "bottom": "Bottom",
+        "left": "Left",
+        "right": "Right",
+        "rotate": "Rotate",
+        "rotate_degree": "Rotate Degree",
+        "preview": "Preview",
+        "apply_processing": "Apply Processing Effects",
+        "mat_data_type": "MAT Data Type",
+        "mat_format": "MAT Image Shape Format",
+        "mat_key": "Key of MAT file",
+        "compress_mat": "Produce Compressed MAT File",
+        "spectral_selection": "Spectral Selection",
+        "spectral_selection_help": "Click on the image to select pixels for spectral data extraction. The selected pixels will be plotted in the spectral plot below.",
+        "spectral_plot": "Spectral Plot",
+        "style": "Style",
+        "clear": "Clear",
+        "download": "Download",
+        "output_results": "Output Results",
+        "mat_file": "MAT File",
+        "info": "Info",
+        "same_as_input": "Same as Input"
+    },
+    'zh-CN':{
+        "title": "高光谱图像预处理工具箱",
+        "load": "加载",
+        "upload_instructions": "**应上传以下两种格式中的一种**\n1. 一个.hdr文件 + 一个无后缀的数据文件\n2. 一个.mat文件",
+        "input_format": "输入数据形状",
+        "data_files": "数据文件",
+        "manual_normalize": "手动归一化(仅影响预览结果)",
+        "normalize_min": "归一化最小值",
+        "normalize_max": "归一化最大值",
+        "wavelength_start": "波长范围起始",
+        "wavelength_end": "波长范围结束",
+        "processing": "处理",
+        "crop": "裁切",
+        "top": "上",
+        "bottom": "下",
+        "left": "左",
+        "right": "右",
+        "rotate": "旋转",
+        "rotate_degree": "旋转角度",
+        "preview": "预览",
+        "apply_processing": "应用处理效果",
+        "mat_data_type": "mat文件数据类型",
+        "mat_format": "mat文件格式",
+        "mat_key": "mat文件的key",
+        "compress_mat": "启用mat文件压缩",
+        "spectral_selection": "光谱选择",
+        "spectral_selection_help": "点击预览图像图像中的像素进行光谱数据提取。选中的像素将在下方的光谱图中绘制。",
+        "spectral_plot": "光谱图",
+        "style": "样式",
+        "clear": "清空",
+        "download": "下载",
+        "output_results": "输出结果",
+        "mat_file": "MAT文件",
+        "info": "信息",
+        "same_as_input": "与输入相同"
+    }
+})
 
 class AppState(Enum):
-    INITIAL = -1
     NOT_LOADED = 0
-    LOADING = 1
     LOADED = 2
     PREVIEWED = 3
     COVERTED = 4
@@ -66,10 +139,10 @@ def load_data(
 
 
 # HWC -> HWC
-def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, rotate_reshape):
+def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg):
     # Rotate
-    if rotate_deg != 0:
-        img = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=rotate_reshape)
+    if rotate_deg % 360 != 0:
+        img = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=True)
 
     # Crop
     if crop_top > 0 or crop_left > 0 or crop_bottom > 0 or crop_right > 0:
@@ -79,50 +152,61 @@ def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, r
 
     return img
 
-def update_ui(state_app_state: AppState):
-    gradio.Info(f"App state changed to {state_app_state.name}")
+# def update_ui(state_app_state: AppState):
+#     gradio.Info(f"App state changed to {state_app_state.name}")
     
-    preview_visible = state_app_state in [AppState.LOADED, AppState.PREVIEWED, AppState.COVERTED]
-    convert_visible = state_app_state in [AppState.PREVIEWED, AppState.COVERTED]
-    plot_visible = state_app_state in [AppState.COVERTED]
+#     preview_visible = state_app_state in [AppState.LOADED, AppState.PREVIEWED, AppState.COVERTED]
+#     convert_visible = state_app_state in [AppState.PREVIEWED, AppState.COVERTED]
+#     plot_visible = state_app_state in [AppState.COVERTED]
     
-    return (
-        gradio.update(visible=preview_visible),
-        gradio.update(visible=convert_visible),
-        gradio.update(visible=plot_visible)
-    )
+#     return (
+#         gradio.update(visible=preview_visible),
+#         gradio.update(visible=convert_visible),
+#         gradio.update(visible=plot_visible)
+#     )
 
-def gr_on_file_upload(
+def gr_load(
         dat_files :List[gradio.utils.NamedString] | None,
         input_format, 
         manual_normalize: bool, normalize_min: float, normalize_max: float,
         wavelength_from: int, wavelength_to: int,
     ):
-    gradio.Info("Loading data...")
     data, data_path = load_data(dat_files, input_format)
     if data is None:
         raise gradio.Error("No data file provided or data loading failed.")
+    gradio.Info("Loading data...")
     if not manual_normalize:
         rgb = hsi2rgb(data, wavelength_range=(wavelength_from, wavelength_to), input_format='HWC', output_format='HWC', to_u8np=True)
     else:
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
-    gradio.Info(f"Data loaded")
-    return rgb, data, data_path, AppState.LOADED
+    gradio.Success(f"Data loaded")
+    logging_text = str({
+        "original_shape": str(data.shape),
+        "original_data_type": str(data.dtype),
+        "original_reflection_range": [float(data.min()), float(data.max())],
+        "original_reflection_mean": float(data.mean()),
+        "original_reflection_std": float(data.std()),
+    })
+    return rgb, data, data_path, AppState.LOADED, logging_text
 
 def gr_preview(
-        preview_img,
+        state_rgb :Float[np.ndarray, 'h w c'] | None,
         crop_top: int, crop_left: int, crop_bottom: int, crop_right: int, 
-        rotate_deg: int, rotate_reshape: bool
+        rotate_deg: int
     ):
+    if state_rgb is None:
+        raise gradio.Error("No data provided.")
     return process_img(
-        preview_img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, rotate_reshape
+        state_rgb, crop_top, crop_left, crop_bottom, crop_right, rotate_deg
     ), AppState.PREVIEWED
 
 def gr_download_selected_spectral(data, state_select_location, data_path):
     if not state_select_location or len(state_select_location) == 0:
-        return None
+        raise gradio.Error("No spectral data selected. Please select at least one pixel to download")
     
+    gradio.Info("Converting ...")
+
     dat_path = Path(data_path.name)
     result = []
     result_location = []
@@ -135,22 +219,23 @@ def gr_download_selected_spectral(data, state_select_location, data_path):
 
     mat_path = dat_path.with_stem(dat_path.stem + '_selected_spectral').with_suffix('.mat')
     savemat(mat_path, {'data': result, 'location': result_location}, do_compression=True, format='5')
+
+    gradio.Success("Done ...")
     
-    return str(mat_path)  # Return string path for DownloadButton
+    return str(mat_path)
 
 def gr_convert(
         data, data_path,
         crop_top: int, crop_left: int, crop_bottom: int, crop_right: int, 
-        rotate_deg: int, rotate_reshape: bool,
+        rotate_deg: int,
         mat_dtype, output_format, mat_key, compress_mat: bool,
         logging_text: str
     ):
-    # Load `data`
     if output_format == 'Same as Input':
         output_format = input_format
     
     data = process_img(
-        data, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, rotate_reshape
+        data, crop_top, crop_left, crop_bottom, crop_right, rotate_deg
     )
     
     # Convert to mat
@@ -185,64 +270,75 @@ def gr_convert(
     return data_processed, str(mat_file), logging_text, AppState.COVERTED
 
 
-def gr_on_img_clicked(evt: gradio.SelectData, data, state_select_location, wavelength_from: int, wavelength_to :int, plot_hint: str):
+def gr_on_img_clicked(evt: gradio.SelectData, state_figure :tuple, data, state_select_location, wavelength_from: int, wavelength_to :int, plot_hint: str):
     """绘制选中像素的光谱曲线"""
     if data is None:
-        return None, state_select_location
+        raise gradio.Error("No converted data provided")
     if state_select_location is None:
         state_select_location = []
     col, row = evt.index
     state_select_location.append((row, col)) # WHY?
 
     wavelengths = np.linspace(wavelength_from, wavelength_to, data.shape[-1])
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for (row, col) in state_select_location:
-        ax.plot(wavelengths, data[row, col, :], plot_hint ,linewidth=2)
+    # spectral_plot = pd.DataFrame(
+    #     {
+    #         "Wavelength": wavelengths,
+    #         "Reflectance": data[row, col, :]
+    #     }
+    # ) # typecheck: ignore
+
+    # fig, ax = plt.subplots(figsize=(10, 6))
+    if state_figure is None:
+        state_figure = plt.subplots(figsize=(10, 6))
+    fig, ax = state_figure
+    # for (row, col) in state_select_location:
+    #     ax.plot(wavelengths, data[row, col, :], plot_hint ,linewidth=2)
+    ax.plot(wavelengths, data[row, col, :], plot_hint ,linewidth=2)
     ax.set_xlabel('Wavelength')
     ax.set_ylabel('Reflectance')
     plt.tight_layout()
-    return fig, state_select_location
+    state_figure = (fig, ax)
+    return fig, state_figure, state_select_location
 
 
 if __name__ == "__main__":
-    state_app_state = gradio.State(value=AppState.INITIAL)
-    state_original_data = gradio.State(value=None,)
-    state_processed_data = gradio.State(value=None,)
-    state_data_path = gradio.State(value=None,)
-    state_selected_location = gradio.State(value=[],)
-    state_rgb = gradio.State(value=None,)
-
-    with gradio.Blocks(title="HDR TO MAT") as demo:
+    with gradio.Blocks(title="hsi-preprocessing-toolkit") as demo:
+        state_app_state = gradio.State(value=AppState.NOT_LOADED)
+        state_original_data = gradio.State(value=None)
+        state_processed_data = gradio.State(value=None)
+        state_data_path = gradio.State(value=None,)
+        state_selected_location = gradio.State(value=[])
+        state_original_rgb = gradio.State(value=None)
+        state_spectral_figure = gradio.State(value=None)
+        
         with gradio.Row():
             with gradio.Column():
-                with gradio.Column(variant="panel"):
-                    gradio.Markdown("## 输入")
-                    # Input Files
-                    gradio.Markdown("**应上传以下两种格式中的一种**  \n1. 一个.hdr文件 + 一个无后缀的数据文件  \n2. 一个.mat文件")
+                with gradio.Accordion(i18n("load")) as load_panel:
+                    gradio.Markdown(i18n("upload_instructions"))
                     input_format = gradio.Radio(
-                        label="输入数据形状 Input Image Shape Format",
+                        label=i18n("input_format"),
                         choices=['HWC', 'CHW'],
                         value='CHW'
                     )
                     dat_files = gradio.File(
-                        label="数据文件 DAT File",
+                        label=i18n("data_files"),
                         file_count="multiple",
                         type="filepath",
                     )
 
                     manual_normalize = gradio.Checkbox(
-                        label="手动归一化(仅影响预览结果) Manual Normalize",
+                        label=i18n("manual_normalize"),
                         value=False,
                     )
                     with gradio.Row():
                         normalize_min = gradio.Number(
-                            label="归一化最小值 Normalize Min",
+                            label=i18n("normalize_min"),
                             value=0,
                             precision=1,
                             visible=False,
                         )
                         normalize_max = gradio.Number(
-                            label="归一化最大值 Normalize Max",
+                            label=i18n("normalize_max"),
                             value=2**16-1,
                             precision=1,
                             visible=False,
@@ -260,160 +356,193 @@ if __name__ == "__main__":
                     )
                     with gradio.Row():
                         wavelength_from = gradio.Number(
-                            label="波长范围起始 Wavelength Range Start",
+                            label=i18n("wavelength_start"),
                             value=400,
                             precision=1,
                         )
                         wavelength_to = gradio.Number(
-                            label="波长范围结束 Wavelength Range End",
+                            label=i18n("wavelength_end"),
                             value=1000,
                             precision=1,
                         )
-                    reload_btn = gradio.Button("重新加载", variant="primary")
+                    reload_btn = gradio.Button(i18n("load"), variant="primary")
                 
-                with gradio.Column(variant="panel", visible=False) as preview_panel:
-                    gradio.Markdown("## 处理")
+                with gradio.Accordion(i18n("processing"), visible=False) as preview_panel:
                     with gradio.Column():
-                        gradio.Markdown("### 裁切 Crop")
+                        gradio.Markdown(f"### {i18n('crop')}")
                         with gradio.Row():
-                            crop_top = gradio.Number(
-                                label="上方裁切像素 Crop Top",
-                                value=0,
-                                precision=1,
+                            crop_top = gradio.Slider(
+                                label=i18n("top"),
+                                minimum=0,
+                                maximum=0,
+                                step=1,
                             )
-                            crop_bottom = gradio.Number(
-                                label="下方裁切像素 Crop Bottom",
-                                value=0,
-                                precision=1,
+                            crop_bottom = gradio.Slider(
+                                label=i18n("bottom"),
+                                minimum=0,
+                                maximum=0,
+                                step=1,
                             )
                         with gradio.Row():
-                            crop_left = gradio.Number(
-                                label="左侧裁切像素 Crop Left",
-                                value=0,
-                                precision=1,
+                            crop_left = gradio.Slider(
+                                label=i18n("left"),
+                                minimum=0,
+                                maximum=0,
+                                step=1,
                             )
-                            crop_right = gradio.Number(
-                                label="右侧裁切像素 Crop Right",
-                                value=0,
-                                precision=1,
+                            crop_right = gradio.Slider(
+                                label=i18n("right"),
+                                minimum=0,
+                                maximum=0,
+                                step=1,
                             )
 
                     with gradio.Column():
-                        gradio.Markdown("### 旋转 Rotate")
-                        rotate_deg = gradio.Number(
-                            label="旋转角度 Rotate Degree",
-                            value=0,
-                            precision=1,
+                        gradio.Markdown(f"### {i18n('rotate')}")
+                        rotate_deg = gradio.Slider(
+                            label=i18n("rotate_degree"),
+                            minimum=-360,
+                            maximum=360,
+                            step=1,
+                            value=0
                         )
-                        rotate_reshape = gradio.Checkbox(
-                            label="旋转时调整形状 Rotate Reshape",
-                            value=True
-                        )
-                    preview_btn  = gradio.Button("预览", variant="primary")
+                    # 这个按钮因为实时预览实际上不需要了，但是暂且隐藏备用
+                    preview_btn  = gradio.Button(i18n("preview"), variant="primary", visible=False)
                     
 
-                with gradio.Column(variant="panel", visible=False) as convert_panel:
-                    gradio.Markdown("## 输出选项")
+                with gradio.Accordion(i18n("apply_processing"), visible=False) as convert_panel:
                     mat_dtype = gradio.Radio(
-                        label="mat文件数据类型 MAT Data Type",
+                        label=i18n("mat_data_type"),
                         choices=["default", "uint8", "uint16", "float32"],
                         value="default"
                     )
                     output_format = gradio.Radio(
-                        label="mat文件格式 MAT Image Shape Format",
+                        label=i18n("mat_format"),
                         choices=['Same as Input', 'HWC', 'CHW'],
                         value='Same as Input'
                     )
                     mat_key = gradio.Text(
-                        label="mat文件的key Key of MAT file",
+                        label=i18n("mat_key"),
                         value='data',
                     )
                     compress_mat = gradio.Checkbox(
-                        label="启用mat文件压缩 Produce Compressed MAT File",
+                        label=i18n("compress_mat"),
                         value=True
                     )
-                    convert_btn  = gradio.Button("应用处理效果", variant="primary")
-
-            with gradio.Column():
-                with gradio.Column(variant="panel"):
-                    gradio.Markdown("## 输出结果 Output")   
-                    preview_img = gradio.Image(label="预览 Preview", format="png", height="auto", width="auto", interactive=False)
-                    mat_file_output = gradio.File(
-                        label="MAT File",
-                        type="filepath",
-                        interactive=False
-                    )
+                    convert_btn  = gradio.Button(i18n("apply_processing"), variant="primary")
                 
-                with gradio.Column(variant="panel", visible=False) as plot_panel:
-                    gradio.Markdown("## 光谱选择 Spectral Selection")
+                with gradio.Accordion(i18n("spectral_selection"),visible=False) as plot_panel:
+                    gradio.Markdown(i18n('spectral_selection_help'))
                     spectral_plot = gradio.Plot(
-                        label="光谱图 Spectral Plot",
+                        label=i18n("spectral_plot"),
                         visible=True,
+                        # x="Wavelength", y="Reflectance",
+                        # height=400, width=600,
                     )
                     plot_hint = gradio.Textbox(
-                        label="样式 Style",
+                        label=i18n("style"),
                         value='b-',
                     )
                     with gradio.Row():
                         clear_plot_btn = gradio.Button(
-                            "清空 Clear",
+                            i18n("clear"),
                             variant="secondary",
                         )
                         download_select_spectral = gradio.DownloadButton(
-                            "下载 Download",
+                            "Download",
                             variant="primary",
                         )
 
+            with gradio.Column():
                 with gradio.Column(variant="panel"):
-                    gradio.Markdown("## 日志 Log")
-                    logging_text = gradio.Textbox(
-                        label="信息 Info",
+                    gradio.Markdown(f"## {i18n('output_results')}")   
+                    preview_img = gradio.Image(label=i18n("preview"), format="png", height="auto", width="auto", interactive=False)
+                    mat_file_output = gradio.File(
+                        label=i18n("mat_file"),
+                        type="filepath",
+                        interactive=False
                     )
+                    logging_text = gradio.Textbox(
+                        label=i18n("info"),
+                    )
+                
 
-        dat_files.upload(
-            fn=gr_on_file_upload,
-            inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[state_rgb, state_original_data, state_data_path, state_app_state]
-        )
+        # dat_files.upload(
+        #     fn=gr_on_file_upload,
+        #     inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
+        #     outputs=[state_original_rgb, state_original_data, state_data_path, state_app_state]
+        # )
         reload_btn.click(
-            fn=gr_on_file_upload,
+            fn=gr_load,
             inputs=[dat_files, input_format, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[state_rgb, state_original_data, state_data_path, state_app_state]
+            outputs=[state_original_rgb, state_original_data, state_data_path, state_app_state, logging_text]
         )
         convert_btn.click(
             fn=gr_convert,
             inputs=[
                 state_original_data, state_data_path,
                 crop_top, crop_left, crop_bottom, crop_right,
-                rotate_deg, rotate_reshape,
+                rotate_deg,
                 mat_dtype, output_format, mat_key, compress_mat,
                 logging_text
             ],
             outputs=[state_processed_data ,mat_file_output, logging_text, state_app_state]
         )
+        for component in [crop_top, crop_left, crop_bottom, crop_right, rotate_deg]:
+            component.change(
+                fn=gr_preview,
+                inputs=[state_original_rgb, crop_top, crop_left, crop_bottom, crop_right, rotate_deg],
+                outputs=[preview_img, state_app_state]
+            )
+        
         preview_btn.click(
             fn=gr_preview,
             inputs=[
-                state_rgb,
+                state_original_rgb,
                 crop_top, crop_left, crop_bottom, crop_right,
-                rotate_deg, rotate_reshape,
+                rotate_deg,
             ],
             outputs=[preview_img, state_app_state]
         )
         preview_img.select(
             fn=gr_on_img_clicked,
-            inputs=[state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],
-            outputs=[spectral_plot, state_selected_location]
+            inputs=[state_spectral_figure, state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],
+            outputs=[spectral_plot, state_spectral_figure, state_selected_location]
         )
         clear_plot_btn.click(
-            fn=lambda: (None, []),
-            outputs=[spectral_plot, state_selected_location]
+            fn=lambda: (None, None, []),
+            outputs=[spectral_plot, state_spectral_figure, state_selected_location]
         )
         download_select_spectral.click(
             fn=gr_download_selected_spectral,
             inputs=[state_processed_data, state_selected_location, state_data_path],
             outputs=[download_select_spectral]
         )
+        state_original_data.change(
+            fn=lambda x: (
+                gradio.update(maximum=x.shape[1] if x is not None else 0),
+                gradio.update(maximum=x.shape[1] if x is not None else 0),
+                gradio.update(maximum=x.shape[0] if x is not None else 0),
+                gradio.update(maximum=x.shape[0] if x is not None else 0),
+            ),
+            inputs=[state_original_data],
+            outputs=[crop_left, crop_right, crop_top, crop_bottom]
+        )
+        state_original_rgb.change(
+            fn=lambda x:x,
+            inputs=[state_original_rgb],
+            outputs=[preview_img]
+        )
+        state_app_state.change(
+            fn=lambda x: (
+                gradio.update(visible=True, open=(x==AppState.NOT_LOADED)),
+                gradio.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
+                gradio.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
+                gradio.update(visible=x==AppState.COVERTED,   open=(x==AppState.COVERTED))
+            ),
+            inputs=[state_app_state],
+            outputs=[load_panel, preview_panel, convert_panel, plot_panel]
+        )
 
-    demo.launch(share=False, inbrowser=True)
+    demo.launch(share=False, inbrowser=True, i18n=i18n)
 
