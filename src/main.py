@@ -328,9 +328,7 @@ if __name__ == "__main__":
         state_selected_location = gr.State(value=[])
         state_original_rgb = gr.State(value=None)
         state_spectral_figure = gr.State(value=None)
-        
-        with gr.Tab('scanner') as tab:
-            scanner_calc_tab()
+
 
         with gr.Tab(i18n("title"), id="hsi_preprocessing_toolkit"):
             with gr.Row():
@@ -575,6 +573,8 @@ if __name__ == "__main__":
                 inputs=[state_app_state],
                 outputs=[load_panel, preview_panel, convert_panel, plot_panel]
             )
+        with gr.Tab("推扫参数计算"):
+            scanner_calc_tab()
 
     demo.launch(share=False, inbrowser=True, i18n=i18n)
 
