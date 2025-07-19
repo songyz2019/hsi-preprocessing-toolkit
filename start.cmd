@@ -1,2 +1,2 @@
 @echo off
-.\uv\uv.exe run src\main.py
+.\uv\uv.exe run --frozen src\main.py
