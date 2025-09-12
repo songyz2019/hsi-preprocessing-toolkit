@@ -1,5 +1,7 @@
 # HSI Preprocessing Toolkit
 
+![](asset/screenshot.jpg)
+
 A Hyperspectral Preprocessing Toolkit that
 1. Read the raw data from the HSI camera, and convert it into `.mat` file
 2. Read the `.mat` file
@@ -7,7 +9,6 @@ A Hyperspectral Preprocessing Toolkit that
 4. Crop and rotate the HSI and preview in realtime
 5. Select spectrals of interest visually and save them into a `.mat` file
 
-![](asset/screenshot.jpg)
 
 
 ## Usage
