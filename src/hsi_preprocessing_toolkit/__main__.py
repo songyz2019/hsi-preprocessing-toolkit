@@ -12,7 +12,7 @@ from scipy.ndimage import rotate
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
-from scanner_calc import scanner_calc_tab
+from .scanner_calc import scanner_calc_tab
 
 
 plt.rcParams['font.family'] = 'SimHei'
@@ -314,7 +314,7 @@ def gr_on_img_clicked(evt: gr.SelectData, state_figure :tuple, data, state_selec
     return fig, state_figure, state_select_location
 
 
-if __name__ == "__main__":
+def main():
     theme = gr.themes.Default(primary_hue='cyan').set(
         button_primary_background_fill='#39c5bb',
         button_primary_background_fill_hover="#30A8A0",
@@ -578,3 +578,6 @@ if __name__ == "__main__":
 
     demo.launch(share=False, inbrowser=True, i18n=i18n)
 
+
+if __name__ == "__main__":
+    main()
