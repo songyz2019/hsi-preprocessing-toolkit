@@ -2,6 +2,14 @@
 
 ![](asset/screenshot.jpg)
 
+
+[![PyPI - Version](https://img.shields.io/pypi/v/hsi-preprocessing-toolkit.svg)](https://pypi.org/project/hsi-preprocessing-toolkit)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/hsi-preprocessing-toolkit)](https://pypi.org/project/hsi-preprocessing-toolkit)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/hsi-preprocessing-toolkit.svg)](https://pypi.org/project/hsi-preprocessing-toolkit)
+![GitHub Created At](https://img.shields.io/github/created-at/songyz2019/hsi-preprocessing-toolkit)
+![GitHub License](https://img.shields.io/github/license/songyz2019/hsi-preprocessing-toolkit)
+
+
 A Hyperspectral Preprocessing Toolkit that
 1. Read the raw data from the HSI camera, and convert it into `.mat` file
 2. Read the `.mat` file
@@ -10,10 +18,27 @@ A Hyperspectral Preprocessing Toolkit that
 5. Select spectrals of interest visually and save them into a `.mat` file
 
 
-
 ## Usage
+### Manual
 1. Download from GitHub release
-2. Double click the `start.cmd` file
+2. Double click the `start.cmd` file. Make sure you have internet access during the first start.
+
+### Install with pip
+```sh
+pip install hsi-preprocessing-toolkit
+hsi_preprocessing_toolkit
+```
+
+### Install with uv
+```sh
+uvx hsi_preprocessing_toolkit
+```
+or install as a tool
+```sh
+uv tool install hsi-preprocessing-toolkit
+hsi_preprocessing_toolkit
+```
+
 
 ## Credit
 1. [uv](https://docs.astral.sh/uv/) for providing a new reliable solution for Python application distribution.  
