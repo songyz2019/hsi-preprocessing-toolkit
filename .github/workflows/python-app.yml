@@ -1,0 +1,43 @@
+name: uv-publish
+
+on:
+    workflow_dispatch:
+    release:
+      types: [published]
+
+        
+permissions:
+  contents: read
+  id-token: write
+  
+jobs:
+  build:
+    environment: pypi_publish
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.13']
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # needed for bump-version.bash
+
+    - uses: astral-sh/setup-uv@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: bump version of pyproject.toml
+      run: bash script/bump-version.bash
+
+    - run: uv sync --frozen
+    - run: uv build
+    - run: uv publish
+    # We use trusted publisher of PyPI, not token needed
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels-${{matrix.python-version}}
+        path: dist/*
