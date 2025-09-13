@@ -12,3 +12,5 @@ sample/
 
 uv/
 main.spec
+
+.gradio/
