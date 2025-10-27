@@ -321,13 +321,14 @@ def main():
     )
 
     with gr.Blocks(title="hsi-preprocessing-toolkit", theme=theme) as demo:
-        state_app_state = gr.State(value=AppState.NOT_LOADED)
-        state_original_data = gr.State(value=None)
-        state_processed_data = gr.State(value=None)
-        state_data_path = gr.State(value=None,)
-        state_selected_location = gr.State(value=[])
-        state_original_rgb = gr.State(value=None)
-        state_spectral_figure = gr.State(value=None)
+        state_app_state = gr.State(value=AppState.NOT_LOADED) # 应用整体状态，aka操作阶段
+        state_original_data = gr.State(value=None)            # 原数据
+        # state_current_layer_index = gr.State(value=None)      # 已选中的图层的数组index
+        state_original_rgb = gr.State(value=None)             # 原数据的RGB代理
+        state_processed_data = gr.State(value=None)           # 处理后的数据
+        state_data_path = gr.State(value=None,)               # 原数据文件路径
+        state_selected_location = gr.State(value=[])          # 已选择的光谱XY坐标点 
+        state_spectral_figure = gr.State(value=None)          # 已选择的光谱的绘图 
 
 
         with gr.Tab(i18n("title"), id="hsi_preprocessing_toolkit"):
@@ -433,7 +434,7 @@ def main():
                                 value=0
                             )
                         # 这个按钮因为实时预览实际上不需要了，但是暂且隐藏备用
-                        preview_btn  = gr.Button(i18n("preview"), variant="primary", visible=False)
+                        # preview_btn  = gr.Button(i18n("preview"), variant="primary", visible=False)
                         
 
                     with gr.Accordion(i18n("apply_processing"), visible=False) as convert_panel:
@@ -524,16 +525,16 @@ def main():
                     inputs=[state_original_rgb, crop_top, crop_left, crop_bottom, crop_right, rotate_deg],
                     outputs=[preview_img, state_app_state]
                 )
-            
-            preview_btn.click(
-                fn=gr_preview,
-                inputs=[
-                    state_original_rgb,
-                    crop_top, crop_left, crop_bottom, crop_right,
-                    rotate_deg,
-                ],
-                outputs=[preview_img, state_app_state]
-            )
+            # Legacy Code:
+            # preview_btn.click(
+            #     fn=gr_preview,
+            #     inputs=[
+            #         state_original_rgb,
+            #         crop_top, crop_left, crop_bottom, crop_right,
+            #         rotate_deg,
+            #     ],
+            #     outputs=[preview_img, state_app_state]
+            # )
             preview_img.select(
                 fn=gr_on_img_clicked,
                 inputs=[state_spectral_figure, state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],

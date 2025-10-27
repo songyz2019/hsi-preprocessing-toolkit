@@ -1,2 +1,2 @@
 @echo off
-.\uv\uv.exe run --frozen src\main.py
+.\uv\uv.exe run --frozen hsi_preprocessing_toolkit
