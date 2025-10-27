@@ -8,91 +8,19 @@ from rasterio import open as rasterio_open
 from scipy.io import savemat, loadmat
 import gradio as gr
 import gradio.utils
-from scipy.ndimage import rotate
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
-from .scanner_calc import scanner_calc_tab
+from .page.scanner_calc import scanner_calc_tab
+import logging
+from .i18n import i18n
+from .algorithm import composite_img
 
 
-plt.rcParams['font.family'] = 'SimHei'
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.info("started")
 
-i18n = gr.I18n(**{
-    'en': {
-        "title": "hsi-preprocessing-toolkit",
-        "load": "Load",
-        "upload_instructions": "**Upload one of the following formats:**\n1. One .hdr file + one raw data file without extension\n2. One .mat file",
-        "input_format": "Input Image Shape Format",
-        "data_files": "Data Files",
-        "manual_normalize": "Manual Normalize (affects preview only)",
-        "normalize_min": "Normalize Min",
-        "normalize_max": "Normalize Max",
-        "wavelength_start": "Wavelength Range Start",
-        "wavelength_end": "Wavelength Range End",
-        "processing": "Processing",
-        "crop": "Crop",
-        "top": "Top",
-        "bottom": "Bottom",
-        "left": "Left",
-        "right": "Right",
-        "rotate": "Rotate",
-        "rotate_degree": "Rotate Degree",
-        "preview": "Preview",
-        "apply_processing": "Apply Processing Effects",
-        "mat_data_type": "MAT Data Type",
-        "mat_format": "MAT Image Shape Format",
-        "mat_key": "Key of MAT file",
-        "compress_mat": "Produce Compressed MAT File",
-        "spectral_selection": "Spectral Selection",
-        "spectral_selection_help": "Click on the image to select pixels for spectral data extraction. The selected pixels will be plotted in the spectral plot below.",
-        "spectral_plot": "Spectral Plot",
-        "style": "Style",
-        "clear": "Clear",
-        "download": "Download",
-        "output_results": "Output Results",
-        "mat_file": "MAT File",
-        "info": "Info",
-        "same_as_input": "Same",
-        "auto_detect": "Auto Detect",
-    },
-    'zh-CN':{
-        "title": "高光谱图像预处理工具箱",
-        "load": "加载",
-        "upload_instructions": "**应上传以下两种格式中的一种**\n1. 同时上传一个.hdr文件 + 一个无后缀的数据文件\n2. 一个.mat文件",
-        "input_format": "输入数据形状",
-        "data_files": "数据文件",
-        "manual_normalize": "手动归一化(仅影响预览结果)",
-        "normalize_min": "归一化最小值",
-        "normalize_max": "归一化最大值",
-        "wavelength_start": "波长范围起始",
-        "wavelength_end": "波长范围结束",
-        "processing": "处理",
-        "crop": "裁切",
-        "top": "上",
-        "bottom": "下",
-        "left": "左",
-        "right": "右",
-        "rotate": "旋转",
-        "rotate_degree": "旋转角度",
-        "preview": "预览",
-        "apply_processing": "应用处理效果",
-        "mat_data_type": "mat文件数据类型",
-        "mat_format": "mat文件格式",
-        "mat_key": "mat文件的key",
-        "compress_mat": "启用mat文件压缩",
-        "spectral_selection": "光谱选择",
-        "spectral_selection_help": "点击预览图像图像中的像素进行光谱数据提取。选中的像素将在下方的光谱图中绘制。",
-        "spectral_plot": "光谱图",
-        "style": "样式",
-        "clear": "清空",
-        "download": "下载",
-        "output_results": "输出结果",
-        "mat_file": "MAT文件",
-        "info": "信息",
-        "same_as_input": "与输入相同",
-        "auto_detect": "自动检测",
-    }
-})
 
 class AppState(Enum):
     NOT_LOADED = 0
@@ -151,34 +79,6 @@ def load_data(
     return data, data_path
 
 
-# Return A HWC Image
-def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
-    # Caclate canvas size
-    shapes = [x.shape for x in imgs]
-    offsets = [ x['location'] for x in transforms ]
-    canvas_c = imgs[0].shape[-1]
-    sizes = [ ((h+abs(x)),w+abs(y)) for (h,w,_),(x,y) in zip(shapes, offsets)]
-    canvas_h, canvas_w = ( max([x[0] for x in sizes]), max([x[1] for x in sizes]) )
-    canvas_shape = (canvas_h, canvas_w, canvas_c)
-    print(f"{sizes=} {canvas_shape=} {shapes=}")
-    canvas = np.zeros(shape=canvas_shape, dtype=imgs[0].dtype)
-
-    # Composite
-    for img,trans in zip(imgs, transforms):
-        rotate_deg = trans['rotate']
-        crop_top, crop
-        if rotate_deg % 360 != 0:
-            img = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=True)
-
-        # Crop
-        if crop_top > 0 or crop_left > 0 or crop_bottom > 0 or crop_right > 0:
-            crop_bottom = None if crop_bottom == 0 else -crop_bottom
-            crop_right  = None if crop_right == 0  else -crop_right
-            img = img[crop_top:crop_bottom, crop_left:crop_right, :]
-        
-        h,w,_ = img.shape
-        canvas[x:x+h, y:y+w] = img
-    return canvas
 
 
 # def update_ui(state_app_state: AppState):
@@ -195,12 +95,15 @@ def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
 #     )
 
 def gr_load(
+        state_current_layer_index,
         state_transforms :list[dict], state_original_rgb, state_original_data, state_original_data_path,
         dat_files :List[gradio.utils.NamedString] | None,
         input_format, input_mat_key: str | None,
         manual_normalize: bool, normalize_min: float, normalize_max: float,
         wavelength_from: int, wavelength_to: int,
     ):
+    logger.info(f"gr_load {state_current_layer_index=} {len(state_original_rgb)=}")
+
     data, data_path = load_data(dat_files, input_format, input_mat_key)
     if data is None:
         raise gr.Error("No data file provided or data loading failed.")
@@ -218,29 +121,40 @@ def gr_load(
         "original_reflection_mean": float(data.mean()),
         "original_reflection_std": float(data.std()),
     })
-    state_original_rgb.append(rgb)
-    state_original_data.append(data)
-    state_original_data_path.append(data_path)
-    state_transforms.append(DEFAULT_TRANSFORM)
-    state_current_layer_index = len(state_original_data) - 1
-    return state_transforms, state_current_layer_index,state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED, logging_text
+
+    # FIXME: Do not use dirty fix
+    while state_current_layer_index >= len(state_original_rgb):
+        state_original_rgb.append(None)
+        state_original_data.append(None)
+        state_original_data_path.append(None)
+        state_transforms.append(DEFAULT_TRANSFORM)
+
+    state_original_rgb[state_current_layer_index]       = rgb
+    state_original_data[state_current_layer_index]      = data
+    state_original_data_path[state_current_layer_index] = data_path
+    state_transforms[state_current_layer_index]         = DEFAULT_TRANSFORM
+
+    logger.info(f"gr_loaded {state_current_layer_index=} {len(state_original_rgb)=}")
+
+    return state_transforms, state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED, logging_text
 
 def gr_composite(
-        state_transforms,
         state_original_rgb :Float[np.ndarray, 'h w c'] | None,
+        state_transforms,
     ):
+    logger.info("gr_composite")
     img = composite_img(state_original_rgb, state_transforms)
-    print(f"{img.shape}")
+    logger.info(f"gr_composited {img.shape=} {type(img)=}")
     return img, AppState.PREVIEWED
 
 
-def gr_download_selected_spectral(data, state_select_location, data_path):
+def gr_download_selected_spectral(state_current_layer_index, data, state_select_location, data_path):
     if not state_select_location or len(state_select_location) == 0:
         raise gr.Error("No spectral data selected. Please select at least one pixel to download")
     
     gr.Info("Converting ...")
 
-    dat_path = Path(data_path.name)
+    dat_path = Path(data_path[state_current_layer_index].name)
     result = []
     result_location = []
     for (row, col) in state_select_location:
@@ -258,17 +172,17 @@ def gr_download_selected_spectral(data, state_select_location, data_path):
     return str(mat_path)
 
 def gr_convert(
+        state_current_layer_index,
+        state_transforms,
         data, data_path,
-        crop_top: int, crop_left: int, crop_bottom: int, crop_right: int, 
-        rotate_deg: int,
         mat_dtype, output_format, mat_key, compress_mat: bool,
         logging_text: str
     ):
-    if output_format == 'same':
-        output_format = input_format
+    logger.info("gr_convert")
     
-    data = process_img(
-        data, crop_top, crop_left, crop_bottom, crop_right, rotate_deg
+    data_path = data_path[state_current_layer_index]
+    data = composite_img(
+        data, state_transforms
     )
     
     # Convert to mat
@@ -341,6 +255,28 @@ def gr_update_transforms(state_transforms, state_current_layer_index, crop_top, 
     }
     return state_transforms
 
+def gr_on_state_current_layer_index_changed(state_current_layer_index, state_transforms, state_original_data):
+    if state_current_layer_index >= len(state_transforms):
+        trans = DEFAULT_TRANSFORM
+        shape = [0,0]
+    else:
+        trans = state_transforms[state_current_layer_index]
+        shape = state_original_data[state_current_layer_index].shape
+
+    crop_top, crop_left, crop_bottom, crop_right = trans['crop']
+    rotate_deg = trans['rotation']
+    offset_x, offset_y = trans['location']
+    
+    max_h, max_w = shape[:2]
+    logger.info(f"gr_on_state_current_layer_index_changed {state_current_layer_index=} {max_h=}, {max_w=}")
+    update_crop_top = gr.update(value=crop_top, maximum=max_h, minimum=0)
+    update_crop_bottom = gr.update(value=crop_bottom, maximum=max_h, minimum=0)
+    update_crop_left = gr.update(value=crop_left, maximum=max_w, minimum=0)
+    update_crop_right = gr.update(value=crop_bottom, maximum=max_w, minimum=0)
+
+    return update_crop_top, update_crop_left, update_crop_bottom, update_crop_right, rotate_deg, offset_x, offset_y
+
+
 DEFAULT_TRANSFORM = {
     'rotation': 0,
     'crop': [0,0,0,0],
@@ -357,7 +293,8 @@ def main():
         # 应用整体状态
         state_app_state = gr.State(value=AppState.NOT_LOADED) # 操作阶段
         # 输入的状态，支持多输出
-        state_current_layer_index = gr.State(value=None)      # 已选中的图层的数组index
+        state_current_layer_index = gr.State(value=0)      # 已选中的图层的数组index
+        state_max_layer_index   = gr.State(value=0)      # 已选中的图层的数组index
         state_original_data = gr.State(value=[])              # 原数据
         state_data_path = gr.State(value=[])                  # 原数据文件路径
         state_original_rgb = gr.State(value=[])               # 原数据的RGB代理
@@ -376,6 +313,14 @@ def main():
         with gr.Tab(i18n("title"), id="hsi_preprocessing_toolkit"):
             with gr.Row():
                 with gr.Column():
+                    with gr.Column():
+                        current_layer_index_slider = gr.Slider(
+                            label="当前图层",
+                            minimum=0,
+                            maximum=3,
+                            step=1,
+                            value=0
+                        )
                     with gr.Accordion(i18n("load")) as load_panel:
                         gr.Markdown(i18n("upload_instructions"))
                         with gr.Row():
@@ -437,42 +382,34 @@ def main():
                         with gr.Row():
                             reload_btn = gr.Button(i18n("load"), variant="primary")
                             reset_loaded_btn = gr.Button(i18n("clear"), variant="secondary")
-                    
+                    # TODO: set maxium to be shape[i]
                     with gr.Accordion(i18n("processing"), visible=False) as preview_panel:
-                        with gr.Column():
-                            gr.Markdown("### 变换对象")
-                            current_layer_index_slider = gr.Slider(
-                                label="图层序号",
-                                minimum=0,
-                                maximum=8, # TODO: 将最大值与状态动态绑定
-                                step=1,
-                            )
                         with gr.Column():
                             gr.Markdown(f"### {i18n('crop')}")
                             with gr.Row():
                                 crop_top = gr.Slider(
                                     label=i18n("top"),
                                     minimum=0,
-                                    maximum=0,
+                                    maximum=9999,
                                     step=1,
                                 )
                                 crop_bottom = gr.Slider(
                                     label=i18n("bottom"),
                                     minimum=0,
-                                    maximum=0,
+                                    maximum=9999,
                                     step=1,
                                 )
                             with gr.Row():
                                 crop_left = gr.Slider(
                                     label=i18n("left"),
                                     minimum=0,
-                                    maximum=0,
+                                    maximum=9999,
                                     step=1,
                                 )
                                 crop_right = gr.Slider(
                                     label=i18n("right"),
                                     minimum=0,
-                                    maximum=0,
+                                    maximum=9999,
                                     step=1,
                                 )
 
@@ -505,17 +442,16 @@ def main():
                     with gr.Accordion(i18n("apply_processing"), visible=False) as convert_panel:
                         mat_dtype = gr.Radio(
                             label=i18n("mat_data_type"),
-                            choices=["same", "uint8", "uint16", "float32"],
+                            choices=["auto", "uint8", "uint16", "float32"],
                             value="float32"
                         )
                         output_format = gr.Radio(
                             label=i18n("mat_format"),
                             choices=[
-                                'same', 
                                 'HWC', 
                                 'CHW'
                             ],
-                            value='same'
+                            value='CHW'
                         )
                         mat_key = gr.Text(
                             label=i18n("mat_key"),
@@ -564,8 +500,8 @@ def main():
                     
             reload_btn.click(
                 fn=gr_load,
-                inputs=[state_transforms, state_original_rgb, state_original_data, state_data_path, dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-                outputs=[state_transforms, state_current_layer_index, state_original_rgb, state_original_data, state_data_path, state_app_state, logging_text]
+                inputs=[state_current_layer_index, state_transforms, state_original_rgb, state_original_data, state_data_path, dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
+                outputs=[state_transforms, state_original_rgb, state_original_data, state_data_path, state_app_state, logging_text]
             )
             reset_loaded_btn.click(
                 fn=lambda logging_text: ([],[],[],AppState.NOT_LOADED, "已清空"),
@@ -575,9 +511,9 @@ def main():
             convert_btn.click(
                 fn=gr_convert,
                 inputs=[
+                    state_current_layer_index,
+                    state_transforms,
                     state_original_data, state_data_path,
-                    crop_top, crop_left, crop_bottom, crop_right,
-                    rotate_deg,
                     mat_dtype, output_format, mat_key, compress_mat,
                     logging_text
                 ],
@@ -594,7 +530,6 @@ def main():
                 fn=gr_composite,
                 inputs=[state_original_rgb, state_transforms],
                 outputs=[preview_img, state_app_state]
-
             )
             # Legacy Code:
             # preview_btn.click(
@@ -607,11 +542,30 @@ def main():
             #     outputs=[preview_img, state_app_state]
             # )
             current_layer_index_slider.change(
-                fn = lambda : current_layer_index_slider.value,
-                inputs=[],
+                fn = lambda x: x,
+                inputs=[current_layer_index_slider],
                 outputs=[state_current_layer_index]
 
             )
+
+            # ------------
+            state_current_layer_index.change(
+                fn=gr_on_state_current_layer_index_changed,
+                inputs=[state_current_layer_index, state_transforms, state_original_data],
+                outputs=[
+                    crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y
+                ]
+            )
+            state_original_data.change(
+                fn=gr_on_state_current_layer_index_changed,
+                inputs=[state_current_layer_index, state_transforms, state_original_data],
+                outputs=[
+                    crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y
+                ]
+            )
+            # ------------
+            
+            
             preview_img.select(
                 fn=gr_on_img_clicked,
                 inputs=[state_spectral_figure, state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],
@@ -623,24 +577,26 @@ def main():
             )
             download_select_spectral.click(
                 fn=gr_download_selected_spectral,
-                inputs=[state_processed_data, state_selected_location, state_data_path],
+                inputs=[state_current_layer_index, state_processed_data, state_selected_location, state_data_path],
                 outputs=[download_select_spectral]
             )
-            state_original_data.change(
-                fn=lambda x,i: (
-                    gr.update(maximum=x[i].shape[1]),
-                    gr.update(maximum=x[i].shape[1]),
-                    gr.update(maximum=x[i].shape[0]),
-                    gr.update(maximum=x[i].shape[0]),
-                ),
-                inputs=[ state_original_data, state_current_layer_index ],
-                outputs=[crop_left, crop_right, crop_top, crop_bottom]
-            )
-            state_original_rgb.change(
-                fn=lambda x:x,
-                inputs=[state_original_rgb],
-                outputs=[preview_img]
-            )
+            # TODO: Bring it back
+            # state_original_data.change(
+            #     fn=lambda x,i: (
+            #         gr.update(maximum=x[i].shape[1]),
+            #         gr.update(maximum=x[i].shape[1]),
+            #         gr.update(maximum=x[i].shape[0]),
+            #         gr.update(maximum=x[i].shape[0]),
+            #     ),
+            #     inputs=[ state_original_data, state_current_layer_index ],
+            #     outputs=[crop_left, crop_right, crop_top, crop_bottom]
+            # )
+            # TODO: shoud we bring it back?
+            # state_original_rgb.change(
+            #     fn=lambda x:x,
+            #     inputs=[state_original_rgb],
+            #     outputs=[preview_img]
+            # )
             state_app_state.change(
                 fn=lambda x: (
                     gr.update(visible=True, open=(x==AppState.NOT_LOADED)),
@@ -651,12 +607,12 @@ def main():
                 inputs=[state_app_state],
                 outputs=[load_panel, preview_panel, convert_panel, plot_panel]
             )
-            state_current_layer_index.change(
-                fn=lambda i,data: (
-                    gr.update(value=i, maximum=len(data)-1),
-                ),
-                inputs=[state_current_layer_index, state_original_data]
-            )
+            # FIXME:
+            # state_max_layer_index.change(
+            #     fn=lambda :gr.update(maximum=state_max_layer_index),
+            #     inputs=[],
+            #     outputs=[current_layer_index_slider]
+            # )
         with gr.Tab("推扫参数计算"):
             scanner_calc_tab()
 
@@ -664,4 +620,5 @@ def main():
 
 
 if __name__ == "__main__":
+    plt.rcParams['font.family'] = 'SimHei'
     main()

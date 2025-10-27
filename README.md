@@ -16,6 +16,7 @@ A Hyperspectral Preprocessing Toolkit that
 3. Preview HSI, and convert it to RGB `.png` file
 4. Crop and rotate the HSI and preview in realtime
 5. Select spectrals of interest visually and save them into a `.mat` file
+6. Mix multiple HSI image with layers. (coming in v2.0.0, now availabe in git)
 
 
 ## Usage

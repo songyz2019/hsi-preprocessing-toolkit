@@ -14,3 +14,4 @@ uv/
 main.spec
 
 .gradio/
+*.mat
