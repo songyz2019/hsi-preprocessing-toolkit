@@ -151,24 +151,11 @@ def load_data(
     return data, data_path
 
 
-# HWC -> HWC
-def process_img(img, crop_top, crop_left, crop_bottom, crop_right, rotate_deg):
-    # Rotate
-    if rotate_deg % 360 != 0:
-        img = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=True)
-
-    # Crop
-    if crop_top > 0 or crop_left > 0 or crop_bottom > 0 or crop_right > 0:
-        crop_bottom = None if crop_bottom == 0 else -crop_bottom
-        crop_right  = None if crop_right == 0  else -crop_right
-        img = img[crop_top:crop_bottom, crop_left:crop_right, :]
-
-    return img
-
 # Return A HWC Image
-def composite_img(imgs :list[np.ndarray], offsets:list[list[int]]):
+def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
     # Caclate canvas size
     shapes = [x.shape for x in imgs]
+    offsets = [ x['location'] for x in transforms ]
     canvas_c = imgs[0].shape[-1]
     sizes = [ ((h+abs(x)),w+abs(y)) for (h,w,_),(x,y) in zip(shapes, offsets)]
     canvas_h, canvas_w = ( max([x[0] for x in sizes]), max([x[1] for x in sizes]) )
@@ -177,7 +164,18 @@ def composite_img(imgs :list[np.ndarray], offsets:list[list[int]]):
     canvas = np.zeros(shape=canvas_shape, dtype=imgs[0].dtype)
 
     # Composite
-    for img,(x,y) in zip(imgs, offsets):
+    for img,trans in zip(imgs, transforms):
+        rotate_deg = trans['rotate']
+        crop_top, crop
+        if rotate_deg % 360 != 0:
+            img = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=True)
+
+        # Crop
+        if crop_top > 0 or crop_left > 0 or crop_bottom > 0 or crop_right > 0:
+            crop_bottom = None if crop_bottom == 0 else -crop_bottom
+            crop_right  = None if crop_right == 0  else -crop_right
+            img = img[crop_top:crop_bottom, crop_left:crop_right, :]
+        
         h,w,_ = img.shape
         canvas[x:x+h, y:y+w] = img
     return canvas
@@ -230,15 +228,9 @@ def gr_load(
 def gr_composite(
         state_transforms,
         state_original_rgb :Float[np.ndarray, 'h w c'] | None,
-        crop_top: int, crop_left: int, crop_bottom: int, crop_right: int, 
-        rotate_deg: int,
     ):
-    if state_current_layer_index >= len(state_original_rgb):
-        gr.Error(f"layer index too big!, it should < {len(state_original_rgb)}")
-
     img = composite_img(state_original_rgb, state_transforms)
     print(f"{img.shape}")
-
     return img, AppState.PREVIEWED
 
 
@@ -601,7 +593,7 @@ def main():
             state_transforms.change(
                 fn=gr_composite,
                 inputs=[state_original_rgb, state_transforms],
-                outputs=[]
+                outputs=[preview_img, state_app_state]
 
             )
             # Legacy Code:
