@@ -10,13 +10,14 @@
 ![GitHub License](https://img.shields.io/github/license/songyz2019/hsi-preprocessing-toolkit)
 
 
-A Hyperspectral Preprocessing Toolkit that
+HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image preprocessing toolset that:
 1. Read the raw data from the HSI camera, and convert it into `.mat` file
 2. Read the `.mat` file
 3. Preview HSI, and convert it to RGB `.png` file
 4. Crop and rotate the HSI and preview in realtime
 5. Select spectrals of interest visually and save them into a `.mat` file
-6. Mix multiple HSI image with layers. (coming in v2.0.0, now availabe in git)
+6. Mix multiple HSI images with layers. (coming in v2.0.0)
+7. Some other utils
 
 
 ## Usage
