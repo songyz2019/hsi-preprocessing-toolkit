@@ -15,3 +15,5 @@ main.spec
 
 .gradio/
 *.mat
+
+asset/icon.af

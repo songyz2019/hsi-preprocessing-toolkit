@@ -5,6 +5,7 @@ import einops
 import numpy as np
 import matplotlib.pyplot as plt
 from rasterio import open as rasterio_open
+import scipy.io
 from scipy.io import savemat, loadmat
 import gradio as gr
 import gradio.utils
@@ -36,24 +37,38 @@ def load_data(
     if dat_files is None or len(dat_files) == 0:
         raise gr.Error("No data file provided. 请上传数据文件. Please upload a data file.")
 
+    logger.info(f"input {mat_key=}")
+
     dat_paths = [Path(f.name) for f in dat_files]
     mat_paths = [p for p in dat_paths if p.suffix == '.mat']
     hdr_paths = [p for p in dat_paths if p.suffix == '.hdr']
     raw_paths = [p for p in dat_paths if p.suffix == '']
 
+    # 处理mat文件
     if len(mat_paths) > 0:
         data_path = mat_paths[0]
-        mat_dat = loadmat(mat_paths[0], squeeze_me=True, mat_dtype=True, struct_as_record=False)
+        mat_dat = loadmat(data_path, squeeze_me=True, mat_dtype=True, struct_as_record=False)
         mat_keys = [x for x in mat_dat.keys() if not x.startswith('__') and not x.endswith('__')]
-        if mat_key is None or mat_key == '':
-            mat_key = mat_keys[0]
-            if len(mat_keys) >= 2:
-                gr.Warning(f"Multiple keys found: {mat_keys}. Using: {mat_key}")
+
+        if not mat_keys:
+            gr.Error("No keys found in .mat file")
+        elif not mat_key or mat_key not in mat_dat.keys(): # TODO: different info for these cases
+            gr.Info(f"Auto-selected mat_key={mat_keys[0]} from {mat_keys}")
+            data = mat_dat[mat_keys[0]]
         else:
-            if mat_key not in mat_dat:
-                raise gr.Error(f"Key '{mat_key}' not found in the MAT file. Available keys: {mat_keys}")
-        data = mat_dat[mat_key]
-    
+            data = mat_dat[mat_key]
+            
+        # 处理mat_struct的情况
+        if isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
+            # TODO: This should be more complex than this, we need mat_key and struct_key if user want, but gradio does not have messagebox
+            if not data._fieldnames:
+                gr.Error("_fieldnames not found for mat_struct")
+            elif mat_key and mat_key in data._fieldnames: 
+                data = getattr(data, mat_key)
+            else:
+                gr.Warning(f"Auto-selected struct_key={data._fieldnames[0]} from {data._fieldnames}")
+                data = getattr(data, data._fieldnames[0])
+
     elif len(hdr_paths) == 0 or len(raw_paths) == 0:
         raise gr.Error("Both .hdr and raw data files are required. Only one is provided.")
     elif len(hdr_paths) > 0 and len(raw_paths) > 0:
@@ -113,7 +128,7 @@ def gr_load(
     else:
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
-    gr.Success(f"Data loaded")
+    gr.Success("Data loaded")
     logging_text = str({
         "original_shape": str(data.shape),
         "original_data_type": str(data.dtype),
@@ -497,7 +512,7 @@ def main():
                         logging_text = gr.Textbox(
                             label=i18n("info"),
                         )
-                    
+            # 回调函数        
             reload_btn.click(
                 fn=gr_load,
                 inputs=[state_current_layer_index, state_transforms, state_original_rgb, state_original_data, state_data_path, dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
@@ -519,28 +534,21 @@ def main():
                 ],
                 outputs=[state_processed_data ,mat_file_output, logging_text, state_app_state]
             )
+
+            # 实时更新state_transforms。
             for component in [crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y]:
                 component.change(
                     fn = gr_update_transforms,
                     inputs=[state_transforms, state_current_layer_index, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y],
                     outputs=[state_transforms]
                 )
-
+            # state_transforms更新会触发重新合成
             state_transforms.change(
                 fn=gr_composite,
                 inputs=[state_original_rgb, state_transforms],
                 outputs=[preview_img, state_app_state]
             )
-            # Legacy Code:
-            # preview_btn.click(
-            #     fn=gr_composite,
-            #     inputs=[
-            #         state_original_rgb,
-            #         crop_top, crop_left, crop_bottom, crop_right,
-            #         rotate_deg,
-            #     ],
-            #     outputs=[preview_img, state_app_state]
-            # )
+            # 绑定图层ID滑块
             current_layer_index_slider.change(
                 fn = lambda x: x,
                 inputs=[current_layer_index_slider],
@@ -565,7 +573,6 @@ def main():
             )
             # ------------
             
-            
             preview_img.select(
                 fn=gr_on_img_clicked,
                 inputs=[state_spectral_figure, state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],
@@ -580,23 +587,13 @@ def main():
                 inputs=[state_current_layer_index, state_processed_data, state_selected_location, state_data_path],
                 outputs=[download_select_spectral]
             )
-            # TODO: Bring it back
-            # state_original_data.change(
-            #     fn=lambda x,i: (
-            #         gr.update(maximum=x[i].shape[1]),
-            #         gr.update(maximum=x[i].shape[1]),
-            #         gr.update(maximum=x[i].shape[0]),
-            #         gr.update(maximum=x[i].shape[0]),
-            #     ),
-            #     inputs=[ state_original_data, state_current_layer_index ],
-            #     outputs=[crop_left, crop_right, crop_top, crop_bottom]
-            # )
-            # TODO: shoud we bring it back?
-            # state_original_rgb.change(
-            #     fn=lambda x:x,
-            #     inputs=[state_original_rgb],
-            #     outputs=[preview_img]
-            # )
+
+            # 加载新图片后，重新合成
+            state_original_rgb.change(
+                fn=gr_composite,
+                inputs=[state_original_rgb, state_transforms],
+                outputs=[preview_img, state_app_state]
+            )
             state_app_state.change(
                 fn=lambda x: (
                     gr.update(visible=True, open=(x==AppState.NOT_LOADED)),
@@ -607,16 +604,10 @@ def main():
                 inputs=[state_app_state],
                 outputs=[load_panel, preview_panel, convert_panel, plot_panel]
             )
-            # FIXME:
-            # state_max_layer_index.change(
-            #     fn=lambda :gr.update(maximum=state_max_layer_index),
-            #     inputs=[],
-            #     outputs=[current_layer_index_slider]
-            # )
         with gr.Tab("推扫参数计算"):
             scanner_calc_tab()
 
-    demo.launch(share=False, inbrowser=True, i18n=i18n)
+    demo.launch(share=False, inbrowser=True, i18n=i18n, favicon_path="asset/icon.ico")
 
 
 if __name__ == "__main__":

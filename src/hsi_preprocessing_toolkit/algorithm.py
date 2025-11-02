@@ -15,14 +15,16 @@ def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
     for i, (img,trans) in enumerate(zip(imgs, transforms)):
         rotate_deg = trans['rotation']
         if rotate_deg % 360 != 0:
-            imgs[i] = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=True)
+            img = rotate(img, angle=rotate_deg, axes=(0, 1), reshape=True)
 
         # Crop
         crop_top, crop_left, crop_bottom, crop_right = trans['crop']
         if crop_top > 0 or crop_left > 0 or crop_bottom > 0 or crop_right > 0:
             crop_bottom = None if crop_bottom == 0 else -crop_bottom
             crop_right  = None if crop_right == 0  else -crop_right
-            imgs[i] = img[crop_top:crop_bottom, crop_left:crop_right, :]
+            img = img[crop_top:crop_bottom, crop_left:crop_right, :]
+        
+        imgs[i] = img
         
     # Caclate canvas size
     shapes = [x.shape for x in imgs]
