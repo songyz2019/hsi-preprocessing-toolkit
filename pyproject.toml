@@ -10,14 +10,13 @@ dependencies = [
     "matplotlib>=3.10.3",
     "rasterio>=1.4.3",
     "rs-fusion-datasets>=0.16.0",
-    "scipy>=1.15.3",
+    "scipy>=1.16.0",
 ]
 authors = [
   { name = "songyz2023", email = "songyz2023dlut@outlook.com" },
 ]
 classifiers = [
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
 ]
@@ -33,7 +32,7 @@ url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
 default = true
 
 [build-system]
-requires = ["uv_build >= 0.8.0, <0.10.0"]
+requires = ["uv_build >= 0.9.0, <0.10.0"]
 build-backend = "uv_build"
 
 [tool.hatch.build.targets.wheel]
