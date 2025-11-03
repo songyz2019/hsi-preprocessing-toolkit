@@ -14,7 +14,7 @@ from jaxtyping import Float
 from enum import Enum
 import logging
 from ..algorithm import composite_img
-from ..i18n import i18n
+from ..constant import i18n
 
 
 logger = logging.getLogger(__name__)

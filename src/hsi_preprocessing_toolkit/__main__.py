@@ -5,7 +5,7 @@ import logging
 from .page.scanner_calc import scanner_calc_tab
 from .page.about import about_tab
 from .page.hsi_preprocessing import hsi_preprocessing_tab
-from .i18n import i18n
+from .constant import i18n
 
 logging.basicConfig(level=logging.INFO)
 

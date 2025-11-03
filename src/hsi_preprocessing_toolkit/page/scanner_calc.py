@@ -1,5 +1,5 @@
 import gradio as gr
-from ..i18n import i18n
+from ..constant import i18n
 
 def _calculate_scanner_parameters(meta_pixel_size, n_wpixel, focal, h, delta_t):
     """All Unit should be in SI unit."""

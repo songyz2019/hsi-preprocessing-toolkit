@@ -1,11 +1,12 @@
 import gradio as gr
-from ..i18n import i18n
+from ..constant import i18n, CONSTS
 
 def about_tab():
     with gr.Tab(i18n('about.tab_title')):
-        with gr.Column(variant="panel"):
+        with gr.Column():
             gr.Markdown('# ' + i18n('about.title'))
             gr.Markdown(i18n('about.description'))
-            gr.Markdown(i18n('about.homepage'))
+            gr.Markdown(f"[{i18n('about.homepage')}]({CONSTS['homepage_url']})")
+            gr.Markdown("```text\n" + i18n('about.license') + "\n```")
 
 

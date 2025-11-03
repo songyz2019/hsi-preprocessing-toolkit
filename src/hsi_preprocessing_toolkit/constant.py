@@ -1,11 +1,15 @@
 import gradio as gr
 
+CONSTS = dict(
+    homepage_url = "https://github.com/songyz2019/hsi-preprocessing-toolkit",
+)
+
 i18n = gr.I18n(**{
     'en': {
         "about.tab_title": "About",
         "about.title": "HSI Preprocessing Toolkit",
         "about.description": "A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset",
-        "about.homepage": "Homepage: https://github.com/songyz2019/hsi-preprocessing-toolkit",
+        "about.homepage": "主页",
 
         "hsi_processing.tab_title": "HSI Processing",
         "hsi_processing.load": "Load",
@@ -49,7 +53,21 @@ i18n = gr.I18n(**{
         "about.tab_title": "关于",
         "about.title": "HPT高光谱处理工具箱",
         "about.description": "A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset",
-        "about.homepage": "主页: https://github.com/songyz2019/hsi-preprocessing-toolkit",
+        "about.homepage": "主页",
+        "about.license": """Copyright (C) 2025  songyz2019
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
 
         "hsi_processing.tab_title": "高光谱图像处理",
         "hsi_processing.load": "加载",
