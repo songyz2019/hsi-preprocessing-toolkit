@@ -22,7 +22,7 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 
 ## Usage
 ### Manual
-1. Download `hpt.cmd` from GitHub release
+1. Download [hpt.cmd](https://github.com/songyz2019/hsi-preprocessing-toolkit/blob/main/script/hpt.cmd) from GitHub release
 2. Double click the `hpt.cmd` file. (Make sure you have internet access during the first start)
 
 ### Install with pip
