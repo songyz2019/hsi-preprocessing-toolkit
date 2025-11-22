@@ -16,7 +16,7 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 3. Preview HSI, and convert it to RGB `.png` file
 4. Crop and rotate the HSI and preview in realtime
 5. Select spectrals of interest visually and save them into a `.mat` file
-6. Mix multiple HSI images with layers. (coming in v2.0.0)
+6. Mix multiple HSI images with layers. (since v2.0.0)
 7. Some other utils
 
 
