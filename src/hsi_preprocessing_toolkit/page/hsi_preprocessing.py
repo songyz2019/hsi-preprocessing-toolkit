@@ -15,11 +15,10 @@ from enum import Enum
 import logging
 from ..algorithm import composite_img
 from ..constant import i18n
+from ..component.logging_box import create_gr_logging_box
 
 
 logger = logging.getLogger(__name__)
-
-
 
 class AppState(Enum):
     NOT_LOADED = 0
@@ -112,13 +111,13 @@ def gr_load(
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
     gr.Success("Data loaded")
-    logging_text = str({
+    logger.info(str({
         "original_shape": str(data.shape),
         "original_data_type": str(data.dtype),
         "original_reflection_range": [float(data.min()), float(data.max())],
         "original_reflection_mean": float(data.mean()),
         "original_reflection_std": float(data.std()),
-    })
+    }))
 
     # FIXME: Do not use dirty fix
     while state_current_layer_index >= len(state_original_rgb):
@@ -134,7 +133,7 @@ def gr_load(
 
     logger.info(f"gr_loaded {state_current_layer_index=} {len(state_original_rgb)=}")
 
-    return state_transforms, state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED, logging_text
+    return state_transforms, state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED
 
 def gr_composite(
         state_original_rgb :Float[np.ndarray, 'h w c'] | None,
@@ -174,7 +173,6 @@ def gr_convert(
         state_transforms,
         data, data_path,
         mat_dtype, output_format, mat_key, compress_mat: bool,
-        logging_text: str
     ):
     logger.info("gr_convert")
     
@@ -209,10 +207,10 @@ def gr_convert(
         'output_reflection_std': float(mat_dat_sav.std()),
     }
 
-    logging_text += "\n".join([f"{k}: {v}" for k, v in info.items()]) + "\n"
+    logger.info( "\n".join([f"{k}: {v}" for k, v in info.items()]) )
 
     # Gradio will handle the visibility of mat_file_output when a file path is returned
-    return data_processed, str(mat_file), logging_text, AppState.COVERTED
+    return data_processed, str(mat_file), AppState.COVERTED
 
 
 def gr_on_img_clicked(evt: gr.SelectData, state_figure :tuple, data, state_select_location, wavelength_from: int, wavelength_to :int, plot_hint: str):
@@ -301,7 +299,7 @@ def hsi_preprocessing_tab():
             with gr.Column():
                 with gr.Column():
                     current_layer_index_slider = gr.Slider(
-                        label="当前图层",
+                        label=i18n("hsi_processing.current_layer"),
                         minimum=0,
                         maximum=3,
                         step=1,
@@ -410,7 +408,7 @@ def hsi_preprocessing_tab():
                         )
                     
                     with gr.Column():
-                        gr.Markdown(f"### 平移")
+                        gr.Markdown("### 平移")
                         with gr.Row():
                             offset_x = gr.Slider(
                                 label="X轴",
@@ -480,19 +478,18 @@ def hsi_preprocessing_tab():
                         type="filepath",
                         interactive=False
                     )
-                    logging_text = gr.Textbox(
-                        label=i18n("hsi_processing.info"),
-                    )
-        # 回调函数        
+                    handler, logging_box = create_gr_logging_box()
+                    logger.addHandler(handler)
+        # 回调函数   
         reload_btn.click(
             fn=gr_load,
             inputs=[state_current_layer_index, state_transforms, state_original_rgb, state_original_data, state_data_path, dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[state_transforms, state_original_rgb, state_original_data, state_data_path, state_app_state, logging_text]
+            outputs=[state_transforms, state_original_rgb, state_original_data, state_data_path, state_app_state]
         )
         reset_loaded_btn.click(
-            fn=lambda logging_text: ([],[],[],AppState.NOT_LOADED, "已清空"),
-            inputs=[logging_text],
-            outputs=[state_original_rgb, state_original_data, state_data_path, state_app_state, logging_text]
+            fn=lambda : ([],[],[],AppState.NOT_LOADED), # TODO: add logging info
+            inputs=[],
+            outputs=[state_original_rgb, state_original_data, state_data_path, state_app_state]
         )
         convert_btn.click(
             fn=gr_convert,
@@ -500,10 +497,9 @@ def hsi_preprocessing_tab():
                 state_current_layer_index,
                 state_transforms,
                 state_original_data, state_data_path,
-                mat_dtype, output_format, mat_key, compress_mat,
-                logging_text
+                mat_dtype, output_format, mat_key, compress_mat
             ],
-            outputs=[state_processed_data ,mat_file_output, logging_text, state_app_state]
+            outputs=[state_processed_data ,mat_file_output, state_app_state]
         )
 
         # 实时更新state_transforms。

@@ -10,9 +10,24 @@ i18n = gr.I18n(**{
         "about.title": "HSI Preprocessing Toolkit",
         "about.description": "A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset",
         "about.homepage": "主页",
+        "about.license": """Copyright (C) 2025  songyz2019
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
 
         "hsi_processing.tab_title": "HSI Processing",
         "hsi_processing.load": "Load",
+        "hsi_processing.current_layer": "Selected Layer",
         "hsi_processing.upload_instructions": "**Upload one of the following formats:**\n1. One .hdr file + one raw data file without extension\n2. One .mat file",
         "hsi_processing.input_format": "Input Image Shape Format",
         "hsi_processing.data_files": "Data Files",
@@ -49,27 +64,13 @@ i18n = gr.I18n(**{
 
         "scanner_calc.tab_title": "Scanner Parameters"
     },
-    'zh-CN':{
+    'zh-CN' : {
         "about.tab_title": "关于",
         "about.title": "HPT高光谱处理工具箱",
         "about.description": "A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset",
         "about.homepage": "主页",
-        "about.license": """Copyright (C) 2025  songyz2019
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
-
         "hsi_processing.tab_title": "高光谱图像处理",
+        "hsi_processing.current_layer": "选中图层",
         "hsi_processing.load": "加载",
         "hsi_processing.upload_instructions": "**应上传以下两种格式中的一种**\n1. 同时上传一个.hdr文件 + 一个无后缀的数据文件\n2. 一个.mat文件",
         "hsi_processing.input_format": "输入数据形状",
@@ -109,3 +110,4 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
     }
 })
 
+__all__ = ['i18n', 'CONSTS']

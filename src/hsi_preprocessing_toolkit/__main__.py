@@ -10,19 +10,19 @@ from .constant import i18n
 logging.basicConfig(level=logging.INFO)
 
 def main():
+    plt.rcParams['font.family'] = 'SimHei'
     theme = gr.themes.Default(primary_hue='cyan').set(
         button_primary_background_fill='#39c5bb',
         button_primary_background_fill_hover="#30A8A0",
     )
 
-    with gr.Blocks(title="hsi-preprocessing-toolkit", theme=theme) as demo:
+    with gr.Blocks(title=i18n("about.title"), theme=theme) as demo:
         hsi_preprocessing_tab()
         scanner_calc_tab()
         about_tab()
 
-    demo.launch(share=False, inbrowser=True, i18n=i18n, favicon_path="asset/icon.ico")
+    demo.launch(share=False, inbrowser=True, i18n=i18n, favicon_path="asset/icon.ico", ) #  theme=theme
 
 
 if __name__ == "__main__":
-    plt.rcParams['font.family'] = 'SimHei'
     main()
