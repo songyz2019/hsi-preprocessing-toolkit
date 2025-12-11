@@ -1,10 +1,19 @@
 import gradio as gr
+import logging
+import logging.handlers
+import os
+import importlib.metadata
+import sys
+import platform
 
+# 常量
 CONSTS = dict(
+    name = "hsi-preprocessing-toolkit", # This should be *EXACTLY SAME* as 'name' in pyproject.tom
     homepage_url = "https://github.com/songyz2019/hsi-preprocessing-toolkit",
 )
 
-i18n = gr.I18n(**{
+# I18N
+TRANSLATION = {
     'en': {
         "about.tab_title": "About",
         "about.title": "HSI Preprocessing Toolkit",
@@ -62,7 +71,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
         "hsi_processing.same_as_input": "Same",
         "hsi_processing.auto_detect": "Auto Detect",
 
-        "scanner_calc.tab_title": "Scanner Parameters"
+        "scanner_calc.tab_title": "Scanner Parameters",
+        "gradio_server_connection_checker.connection_lost": "Server Connection Lost"
     },
     'zh-CN' : {
         "about.tab_title": "关于",
@@ -106,8 +116,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
         "hsi_processing.same_as_input": "与输入相同",
         "hsi_processing.auto_detect": "自动检测",
 
-        "scanner_calc.tab_title": "推扫仪计算"
+        "scanner_calc.tab_title": "推扫仪计算",
+        "gradio_server_connection_checker.connection_lost": "连接已断开",
     }
-})
+}
 
-__all__ = ['i18n', 'CONSTS']
+i18n = gr.I18n(**TRANSLATION)
+
+# 版本
+VERSION = importlib.metadata.version(CONSTS['name'])
+
+# 调试
+DEBUG = os.environ.get('HPT_DEBUG','').upper() in ['1', 'TRUE', 'YES']
+
+# 日志
+LOGGER = logging.getLogger(TRANSLATION['en']['about.title']) # 全局唯一LOGGER
+LOGGER_MEMORY_HANDLER = logging.handlers.MemoryHandler(10_000, flushLevel=logging.WARNING) # 用于在UI中显示LOGGING信息
+
+LOGGER.addHandler(LOGGER_MEMORY_HANDLER)
+logging.basicConfig(
+    level=logging.DEBUG if DEBUG else logging.INFO,
+    format='[%(levelname)s %(asctime)s] %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# 初始化完成
+LOGGER.info(f"Initalized. {DEBUG=}, {CONSTS['name']} v{VERSION}, Gradio v{gr.__version__}, Python v{platform.python_version()} on {platform.platform()}")

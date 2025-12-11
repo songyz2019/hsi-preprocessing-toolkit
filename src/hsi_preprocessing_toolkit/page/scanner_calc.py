@@ -1,5 +1,5 @@
 import gradio as gr
-from ..constant import i18n
+from ..common import i18n
 
 def _calculate_scanner_parameters(meta_pixel_size, n_wpixel, focal, h, delta_t):
     """All Unit should be in SI unit."""
@@ -18,7 +18,7 @@ def calculate_scanner_parameters(meta_pixel_size, n_wpixel, focal, h, delta_t, p
     pulse_freq = round(v) * pulse_per_mm
     return v, resolution, pulse_freq
 
-def scanner_calc_tab():
+def ScannerCalcTab():
     with gr.Tab(i18n("scanner_calc.tab_title")):
         with gr.Row():
             with gr.Column(variant="panel"):

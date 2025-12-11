@@ -1,12 +1,12 @@
 [project]
 name = "hsi-preprocessing-toolkit"
-version = "0.1.0"
+version = "0.0.0" # This will be changed by dunami according to git tag when releasing.
 description = "HSI Preprocessing Toolkit"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "einops>=0.8.0",
-    "gradio>5.0.0,<6.0.0",
+    "gradio>=6.1.0",
     "matplotlib>=3.10.0",
     "rasterio>=1.4.0",
     "rs-fusion-datasets>=0.16.0",

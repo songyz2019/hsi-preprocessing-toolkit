@@ -12,13 +12,9 @@ import gradio.utils
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
-import logging
 from ..algorithm import composite_img
-from ..constant import i18n
-from ..component.logging_box import create_gr_logging_box
-
-
-logger = logging.getLogger(__name__)
+from ..common import i18n, LOGGER, LOGGER_MEMORY_HANDLER
+from ..util import records_to_html
 
 class AppState(Enum):
     NOT_LOADED = 0
@@ -34,7 +30,7 @@ def load_data(
     if dat_files is None or len(dat_files) == 0:
         raise gr.Error("No data file provided. 请上传数据文件. Please upload a data file.")
 
-    logger.info(f"input {mat_key=}")
+    LOGGER.info(f"input {mat_key=}")
 
     dat_paths = [Path(f.name) for f in dat_files]
     mat_paths = [p for p in dat_paths if p.suffix == '.mat']
@@ -99,7 +95,7 @@ def gr_load(
         manual_normalize: bool, normalize_min: float, normalize_max: float,
         wavelength_from: int, wavelength_to: int,
     ):
-    logger.info(f"gr_load {state_current_layer_index=} {len(state_original_rgb)=}")
+    LOGGER.info(f"gr_load {state_current_layer_index=} {len(state_original_rgb)=}")
 
     data, data_path = load_data(dat_files, input_format, input_mat_key)
     if data is None:
@@ -111,7 +107,7 @@ def gr_load(
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
     gr.Success("Data loaded")
-    logger.info(str({
+    LOGGER.info(str({
         "original_shape": str(data.shape),
         "original_data_type": str(data.dtype),
         "original_reflection_range": [float(data.min()), float(data.max())],
@@ -131,7 +127,7 @@ def gr_load(
     state_original_data_path[state_current_layer_index] = data_path
     state_transforms[state_current_layer_index]         = DEFAULT_TRANSFORM
 
-    logger.info(f"gr_loaded {state_current_layer_index=} {len(state_original_rgb)=}")
+    LOGGER.info(f"gr_loaded {state_current_layer_index=} {len(state_original_rgb)=}")
 
     return state_transforms, state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED
 
@@ -139,9 +135,9 @@ def gr_composite(
         state_original_rgb :Float[np.ndarray, 'h w c'] | None,
         state_transforms,
     ):
-    logger.info("gr_composite")
+    LOGGER.info("gr_composite")
     img = composite_img(state_original_rgb, state_transforms)
-    logger.info(f"gr_composited {img.shape=} {type(img)=}")
+    LOGGER.info(f"gr_composited {img.shape=} {type(img)=}")
     return img, AppState.PREVIEWED
 
 
@@ -174,7 +170,7 @@ def gr_convert(
         data, data_path,
         mat_dtype, output_format, mat_key, compress_mat: bool,
     ):
-    logger.info("gr_convert")
+    LOGGER.info("gr_convert")
     
     data_path = data_path[state_current_layer_index]
     data = composite_img(
@@ -207,7 +203,7 @@ def gr_convert(
         'output_reflection_std': float(mat_dat_sav.std()),
     }
 
-    logger.info( "\n".join([f"{k}: {v}" for k, v in info.items()]) )
+    LOGGER.info( "\n".join([f"{k}: {v}" for k, v in info.items()]) )
 
     # Gradio will handle the visibility of mat_file_output when a file path is returned
     return data_processed, str(mat_file), AppState.COVERTED
@@ -264,7 +260,7 @@ def gr_on_state_current_layer_index_changed(state_current_layer_index, state_tra
     offset_x, offset_y = trans['location']
     
     max_h, max_w = shape[:2]
-    logger.info(f"gr_on_state_current_layer_index_changed {state_current_layer_index=} {max_h=}, {max_w=}")
+    LOGGER.info(f"gr_on_state_current_layer_index_changed {state_current_layer_index=} {max_h=}, {max_w=}")
     update_crop_top = gr.update(value=crop_top, maximum=max_h, minimum=0)
     update_crop_bottom = gr.update(value=crop_bottom, maximum=max_h, minimum=0)
     update_crop_left = gr.update(value=crop_left, maximum=max_w, minimum=0)
@@ -279,7 +275,7 @@ DEFAULT_TRANSFORM = {
     'location': [0,0]
 }
 
-def hsi_preprocessing_tab():
+def HSIProcessingTab():
     # 应用整体状态
     state_app_state = gr.State(value=AppState.NOT_LOADED) # 操作阶段
     # 输入的状态，支持多输出
@@ -440,6 +436,7 @@ def hsi_preprocessing_tab():
                     mat_key = gr.Text(
                         label=i18n("hsi_processing.mat_key"),
                         value='data',
+                        max_lines=1
                     )
                     compress_mat = gr.Checkbox(
                         label=i18n("hsi_processing.compress_mat"),
@@ -478,8 +475,16 @@ def hsi_preprocessing_tab():
                         type="filepath",
                         interactive=False
                     )
-                    handler, logging_box = create_gr_logging_box()
-                    logger.addHandler(handler)
+                    gr.HTML(
+                        value=lambda: records_to_html(LOGGER_MEMORY_HANDLER.buffer),
+                        label='Logging',
+                        every= 0.5,
+                        autoscroll=False,
+                        container=True,
+                        css_template="max-height: 20em; overflow: auto;",
+                        html_template="<label>Logging</label><pre>${value}</pre>",
+                        # js_on_load="document.querySelector('pre#logging').addEventListener('change', e => e.scrollTo )"
+                    )
         # 回调函数   
         reload_btn.click(
             fn=gr_load,

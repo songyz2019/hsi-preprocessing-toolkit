@@ -1,17 +1,13 @@
 from scipy.ndimage import rotate
 import numpy as np
-import logging
 from copy import deepcopy
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.info("started")
+from .common import LOGGER
 
 # Return A HWC Image, the C should work with both RGB and HSI
 def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
     imgs = deepcopy(imgs)
     # Transform
-    logger.info(f"{transforms=}")
+    LOGGER.info(f"{transforms=}")
     for i, (img,trans) in enumerate(zip(imgs, transforms)):
         rotate_deg = trans['rotation']
         if rotate_deg % 360 != 0:
@@ -33,7 +29,7 @@ def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
     sizes = [ ((h+abs(x)),w+abs(y)) for (h,w,_),(x,y) in zip(shapes, offsets)]
     canvas_h, canvas_w = ( max([x[0] for x in sizes]), max([x[1] for x in sizes]) )
     canvas_shape = (canvas_h, canvas_w, canvas_c)
-    logger.info(f"{sizes=} {canvas_shape=} {shapes=}")
+    LOGGER.info(f"{sizes=} {canvas_shape=} {shapes=}")
     canvas = np.zeros(shape=canvas_shape, dtype=imgs[0].dtype)
 
     # 合成 Compositing
