@@ -13,8 +13,9 @@ from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
 from ..algorithm import composite_img
-from ..common import i18n, LOGGER, LOGGER_MEMORY_HANDLER
+from ..common import i18n, LOGGER, LOGGER_MEMORY_HANDLER, TRANSLATION
 from ..util import records_to_html
+import logging
 
 class AppState(Enum):
     NOT_LOADED = 0
@@ -29,31 +30,34 @@ def load_data(
 ) -> Tuple[np.ndarray | None, Path | None]:
     if dat_files is None or len(dat_files) == 0:
         raise gr.Error("No data file provided. 请上传数据文件. Please upload a data file.")
-
-    LOGGER.info(f"input {mat_key=}")
-
+    
     dat_paths = [Path(f.name) for f in dat_files]
     mat_paths = [p for p in dat_paths if p.suffix == '.mat']
     hdr_paths = [p for p in dat_paths if p.suffix == '.hdr']
     raw_paths = [p for p in dat_paths if p.suffix == '']
 
-    # 处理mat文件
     if len(mat_paths) > 0:
         data_path = mat_paths[0]
+        LOGGER.info(f"Loading {data_path} as .mat files, {mat_key=}")
         mat_dat = loadmat(data_path, squeeze_me=True, mat_dtype=True, struct_as_record=False)
         mat_keys = [x for x in mat_dat.keys() if not x.startswith('__') and not x.endswith('__')]
 
         if not mat_keys:
+            LOGGER.error("No keys found in .mat file")
             gr.Error("No keys found in .mat file")
-        elif not mat_key or mat_key not in mat_dat.keys(): # TODO: different info for these cases
-            gr.Info(f"Auto-selected mat_key={mat_keys[0]} from {mat_keys}")
+        elif not mat_key:
+            LOGGER.log(level=logging.INFO if len(mat_keys)==1 else logging.WARNING, msg = f"Auto-selected mat_key={mat_keys[0]} from {mat_keys}")
             data = mat_dat[mat_keys[0]]
+        elif mat_key not in mat_dat.keys():
+            LOGGER.error("mat_key not found in .mat files")
+            gr.Error("mat_key not found in .mat files") # TODO: Maybe we can make gr.Error triggered when calling LOGGER.error by adding a handler?
         else:
             data = mat_dat[mat_key]
             
         # 处理mat_struct的情况
         if isinstance(data, scipy.io.matlab.mio5_params.mat_struct):
             # TODO: This should be more complex than this, we need mat_key and struct_key if user want, but gradio does not have messagebox
+            LOGGER.info("mat_struct detected, processing...")
             if not data._fieldnames:
                 gr.Error("_fieldnames not found for mat_struct")
             elif mat_key and mat_key in data._fieldnames: 
@@ -69,10 +73,11 @@ def load_data(
         hdr_path = hdr_paths[0]
         if hdr_path.parent != data_path.parent:
             shutil.copy(hdr_path, data_path.with_suffix('.hdr'))
-        print(f"Loading {data_path}")
+        LOGGER.info(f"Loading {data_path} as .hdr+raw files")
         with rasterio_open(data_path, 'r') as src:
+            # LOGGER.info(src.profile)
             data = src.read()
-        print(f"Loaded {data_path}")
+
     else:
         raise gr.Error("Unknown file format")
 
@@ -97,16 +102,22 @@ def gr_load(
     ):
     LOGGER.info(f"gr_load {state_current_layer_index=} {len(state_original_rgb)=}")
 
+    gr.Info(TRANSLATION['en']["hsi_processing.loading"] + '\n' + TRANSLATION['zh-CN']["hsi_processing.loading"], duration=30)  # TODO: Wait the fix and support of i18n in gradio 6
+    # gr.Info(i18n("hsi_processing.loading"), duration=30)
     data, data_path = load_data(dat_files, input_format, input_mat_key)
     if data is None:
         raise gr.Error("No data file provided or data loading failed.")
-    gr.Info("Loading data...")
+
     if not manual_normalize:
         rgb = hsi2rgb(data, wavelength_range=(wavelength_from, wavelength_to), input_format='HWC', output_format='HWC', to_u8np=True)
     else:
         rgb = _hsi2rgb( (data-normalize_min)/(normalize_max-normalize_min), wavelength=np.linspace(wavelength_from, wavelength_to, data.shape[-1]))
         rgb = (rgb*255.0).astype(np.uint8)
-    gr.Success("Data loaded")
+    gr.Success(TRANSLATION['en']["hsi_processing.loaded"] + '\n' + TRANSLATION['zh-CN']["hsi_processing.loaded"], duration=30) # TODO: Wait the fix and support of i18n in gradio 6
+    # gr.Success(i18n("hsi_processing.loaded"), duration=30)
+
+    # print('\a') # This suppose that server and client are in the same PC
+
     LOGGER.info(str({
         "original_shape": str(data.shape),
         "original_data_type": str(data.dtype),
@@ -115,7 +126,7 @@ def gr_load(
         "original_reflection_std": float(data.std()),
     }))
 
-    # FIXME: Do not use dirty fix
+    # # FIXME: Do not use dirty fix
     while state_current_layer_index >= len(state_original_rgb):
         state_original_rgb.append(None)
         state_original_data.append(None)
@@ -135,9 +146,9 @@ def gr_composite(
         state_original_rgb :Float[np.ndarray, 'h w c'] | None,
         state_transforms,
     ):
-    LOGGER.info("gr_composite")
+    LOGGER.info("compositing...")
     img = composite_img(state_original_rgb, state_transforms)
-    LOGGER.info(f"gr_composited {img.shape=} {type(img)=}")
+    LOGGER.info(f"composited {img.shape=} {type(img)=}")
     return img, AppState.PREVIEWED
 
 
@@ -145,7 +156,7 @@ def gr_download_selected_spectral(state_current_layer_index, data, state_select_
     if not state_select_location or len(state_select_location) == 0:
         raise gr.Error("No spectral data selected. Please select at least one pixel to download")
     
-    gr.Info("Converting ...")
+    gr.Info(i18n("hsi_processing.applying_transforms"))
 
     dat_path = Path(data_path[state_current_layer_index].name)
     result = []
@@ -160,7 +171,7 @@ def gr_download_selected_spectral(state_current_layer_index, data, state_select_
     mat_path = dat_path.with_stem(dat_path.stem + '_selected_spectral').with_suffix('.mat')
     savemat(mat_path, {'data': result, 'location': result_location}, do_compression=True, format='5')
 
-    gr.Success("Done ...")
+    gr.Success("hsi_processing.applied_transforms")
     
     return str(mat_path)
 
@@ -212,7 +223,7 @@ def gr_convert(
 def gr_on_img_clicked(evt: gr.SelectData, state_figure :tuple, data, state_select_location, wavelength_from: int, wavelength_to :int, plot_hint: str):
     """绘制选中像素的光谱曲线"""
     if data is None:
-        raise gr.Error("No converted data provided")
+        gr.Error(TRANSLATION['en']["hsi_processing.no_converted_data_for_clicking"] + '\n' + TRANSLATION['zh-CN']["hsi_processing.no_converted_data_for_clicking"]) 
     if state_select_location is None:
         state_select_location = []
     col, row = evt.index
@@ -404,16 +415,16 @@ def HSIProcessingTab():
                         )
                     
                     with gr.Column():
-                        gr.Markdown("### 平移")
+                        gr.Markdown(f"### {i18n('hsi_processing.translate_offset')}")
                         with gr.Row():
                             offset_x = gr.Slider(
-                                label="X轴",
+                                label=i18n("hsi_processing.translate_x"),
                                 minimum=0,
                                 maximum=+9999,
                                 step=1,
                             )
                             offset_y = gr.Slider(
-                                label="Y轴",
+                                label=i18n("hsi_processing.translate_y"),
                                 minimum=0,
                                 maximum=+9999,
                                 step=1,
