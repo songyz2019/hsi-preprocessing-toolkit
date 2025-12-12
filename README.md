@@ -1,7 +1,5 @@
 # HSI Preprocessing Toolkit
 
-![](asset/screenshot.jpg)
-
 
 [![PyPI - Version](https://img.shields.io/pypi/v/hsi-preprocessing-toolkit.svg)](https://pypi.org/project/hsi-preprocessing-toolkit)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/hsi-preprocessing-toolkit)](https://pypi.org/project/hsi-preprocessing-toolkit)
@@ -9,6 +7,7 @@
 ![GitHub Created At](https://img.shields.io/github/created-at/songyz2019/hsi-preprocessing-toolkit)
 ![GitHub License](https://img.shields.io/github/license/songyz2019/hsi-preprocessing-toolkit)
 
+![](asset/screenshot.jpg)
 
 HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image preprocessing toolset that:
 1. Read the raw data from the HSI camera, and convert it into `.mat` file
@@ -23,23 +22,20 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 ## Usage
 ### Manual
 1. Download [hpt.cmd](https://github.com/songyz2019/hsi-preprocessing-toolkit/blob/main/script/hpt.cmd) from GitHub release
-2. Double click the `hpt.cmd` file. (Make sure you have internet access during the first start)
+2. Double click the `hpt.cmd` file. 
 
-### Install with pip
-```sh
-pip install hsi-preprocessing-toolkit
-hsi_preprocessing_toolkit
-```
+> **TIPS**: Make sure you have internet access during the first start
 
 ### Install with uv
-```sh
-uvx hsi_preprocessing_toolkit
-```
-or install as a tool
-```sh
-uv tool install hsi-preprocessing-toolkit
-hsi_preprocessing_toolkit
-```
+1. Install [uv](https://docs.astral.sh/uv/) directly or with pip: `pip install uv`
+2. Install HPT: `uv tool install hsi-preprocessing-toolkit`
+3. Start HPT: `hsi_preprocessing_toolkit`
+
+### Install with pip
+1. Install HPT: `pip install hsi-preprocessing-toolkit`
+2. Start HPT: `hsi_preprocessing_toolkit`
+
+> **TIPS**: It's not recommend to install CLI tools directly with pip, please use [uv tool](https://docs.astral.sh/uv/guides/tools/) or [pipx](https://pipx.pypa.io/) to install python applications in isolated environments.
 
 
 ## Credit

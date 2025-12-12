@@ -142,6 +142,16 @@ def gr_load(
 
     return state_transforms, state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED
 
+# def gr_transpose_original_data(input_format,state_transforms, state_current_layer_index, state_original_data, state_app_state):
+#     if input_format == "CHW":
+#         pattern = 'c h w -> h w c'
+#     else:
+#         pattern = 'h w c -> c h w'
+#     state_original_data = einops.rearrange(state_original_data, pattern)
+#     state_transforms[state_current_layer_index] = DEFAULT_TRANSFORM
+#     state_original_rgb[state_current_layer_index] = 
+#     return state_transforms, state_original_rgb, state_original_data, AppState.LOADED
+
 def gr_composite(
         state_original_rgb :Float[np.ndarray, 'h w c'] | None,
         state_transforms,
@@ -587,3 +597,10 @@ def HSIProcessingTab():
             inputs=[state_app_state],
             outputs=[load_panel, preview_panel, convert_panel, plot_panel]
         )
+
+        # 转置
+        # input_format.change(
+        #     fn=gr_transpose_original_data,
+        #     inputs=[state_current_layer_index, input_format, state_original_data],
+        #     outputs=[state_transforms, state_original_rgb, state_original_data, AppState.LOADED]
+        # )
