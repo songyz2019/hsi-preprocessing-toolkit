@@ -3,7 +3,8 @@ import gradio as gr
 from .page.scanner_calc import ScannerCalcTab
 from .page.about import AboutTab
 from .page.hsi_preprocessing import HSIProcessingTab
-from .common import i18n, DEBUG
+from .component.create_logger import create_gr_logger
+from .common import i18n, DEBUG, MULTI_USER, LOGGER_MEMORY_HANDLER
 
 
 def main():
@@ -18,6 +19,8 @@ def main():
         HSIProcessingTab()
         ScannerCalcTab()
         AboutTab()
+        if not MULTI_USER:
+            create_gr_logger(LOGGER_MEMORY_HANDLER)
 
     demo.launch(debug=DEBUG, share=False, inbrowser=True, i18n=i18n, favicon_path="asset/icon.ico", theme=theme)
 

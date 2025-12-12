@@ -13,7 +13,7 @@ from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
 from ..algorithm import composite_img
-from ..common import i18n, LOGGER, LOGGER_MEMORY_HANDLER, TRANSLATION
+from ..common import i18n, LOGGER, TRANSLATION
 from ..util import records_to_html
 import logging
 
@@ -496,16 +496,7 @@ def HSIProcessingTab():
                         type="filepath",
                         interactive=False
                     )
-                    gr.HTML(
-                        value=lambda: records_to_html(LOGGER_MEMORY_HANDLER.buffer),
-                        label='Logging',
-                        every= 0.5,
-                        autoscroll=False,
-                        container=True,
-                        css_template="max-height: 20em; overflow: auto;",
-                        html_template="<label>Logging</label><pre>${value}</pre>",
-                        # js_on_load="document.querySelector('pre#logging').addEventListener('change', e => e.scrollTo )"
-                    )
+
         # 回调函数   
         reload_btn.click(
             fn=gr_load,

@@ -144,13 +144,16 @@ i18n = gr.I18n(**TRANSLATION)
 VERSION = importlib.metadata.version(CONSTS['name'])
 
 # 调试
-DEBUG = os.environ.get('HPT_DEBUG','').upper() in ['1', 'TRUE', 'YES']
+DEBUG = os.environ.get('HPT_DEBUG','FALSE').upper() in ['1', 'TRUE', 'YES']
+MULTI_USER = os.environ.get('HPT_MULTI_USER','FALSE').upper() in ['1', 'TRUE', 'YES']
 
 # 日志
 LOGGER = logging.getLogger(TRANSLATION['en']['about.title']) # 全局唯一LOGGER
-LOGGER_MEMORY_HANDLER = logging.handlers.MemoryHandler(10_000, flushLevel=logging.WARNING) # 用于在UI中显示LOGGING信息
+LOGGER_MEMORY_HANDLER :logging.handlers.MemoryHandler|None = None
+if not MULTI_USER:
+    LOGGER_MEMORY_HANDLER = logging.handlers.MemoryHandler(10_000, flushLevel=logging.WARNING) # 用于在UI中显示LOGGING信息
+    LOGGER.addHandler(LOGGER_MEMORY_HANDLER)
 
-LOGGER.addHandler(LOGGER_MEMORY_HANDLER)
 logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
     format='[%(levelname)s %(asctime)s] %(name)s: %(message)s',
