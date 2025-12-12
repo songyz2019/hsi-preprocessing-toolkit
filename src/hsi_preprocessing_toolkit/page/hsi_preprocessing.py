@@ -14,7 +14,6 @@ from jaxtyping import Float
 from enum import Enum
 from ..algorithm import composite_img
 from ..common import i18n, LOGGER, TRANSLATION
-from ..util import records_to_html
 import logging
 
 class AppState(Enum):
@@ -102,6 +101,7 @@ def gr_load(
     ):
     LOGGER.info(f"gr_load {state_current_layer_index=} {len(state_original_rgb)=}")
 
+    # dialog_title = ' '.join([Path(f.name).name for f in dat_files])
     gr.Info(TRANSLATION['en']["hsi_processing.loading"] + '\n' + TRANSLATION['zh-CN']["hsi_processing.loading"], duration=30)  # TODO: Wait the fix and support of i18n in gradio 6
     # gr.Info(i18n("hsi_processing.loading"), duration=30)
     data, data_path = load_data(dat_files, input_format, input_mat_key)
@@ -142,7 +142,7 @@ def gr_load(
 
     return state_transforms, state_original_rgb, state_original_data, state_original_data_path, AppState.LOADED
 
-# def gr_transpose_original_data(input_format,state_transforms, state_current_layer_index, state_original_data, state_app_state):
+# def gr_transpose_original_data(input_format,state_transforms, state_current_layer_index, state_original_data, state_ui_state):
 #     if input_format == "CHW":
 #         pattern = 'c h w -> h w c'
 #     else:
@@ -272,22 +272,33 @@ def gr_on_state_current_layer_index_changed(state_current_layer_index, state_tra
     if state_current_layer_index >= len(state_transforms):
         trans = DEFAULT_TRANSFORM
         shape = [0,0]
+        ui_state = AppState.NOT_LOADED
+        dat_files = gr.update(value=[])
     else:
         trans = state_transforms[state_current_layer_index]
         shape = state_original_data[state_current_layer_index].shape
+        ui_state = AppState.LOADED
+        dat_files = gr.update()
 
     crop_top, crop_left, crop_bottom, crop_right = trans['crop']
     rotate_deg = trans['rotation']
     offset_x, offset_y = trans['location']
     
     max_h, max_w = shape[:2]
-    LOGGER.info(f"gr_on_state_current_layer_index_changed {state_current_layer_index=} {max_h=}, {max_w=}")
+    LOGGER.info(f"layer_index_changed {state_current_layer_index=} {max_h=}, {max_w=}")
     update_crop_top = gr.update(value=crop_top, maximum=max_h, minimum=0)
     update_crop_bottom = gr.update(value=crop_bottom, maximum=max_h, minimum=0)
     update_crop_left = gr.update(value=crop_left, maximum=max_w, minimum=0)
     update_crop_right = gr.update(value=crop_bottom, maximum=max_w, minimum=0)
 
-    return update_crop_top, update_crop_left, update_crop_bottom, update_crop_right, rotate_deg, offset_x, offset_y
+    return update_crop_top, update_crop_left, update_crop_bottom, update_crop_right, rotate_deg, offset_x, offset_y, ui_state, dat_files
+
+def gr_on_state_data_path_changed(state_data_path, state_current_layer_index, current_layer_radio):
+    choices = [f"{i} "+(p.name if p else "Empty") for i,p in enumerate(state_data_path+[None])]
+    LOGGER.info(f"state_data_path_changed. {choices=}")
+    # 更新UI
+    current_layer_radio = gr.update( value=choices[state_current_layer_index], choices=choices )
+    return current_layer_radio
 
 
 DEFAULT_TRANSFORM = {
@@ -298,30 +309,43 @@ DEFAULT_TRANSFORM = {
 
 def HSIProcessingTab():
     # 应用整体状态
-    state_app_state = gr.State(value=AppState.NOT_LOADED) # 操作阶段
+    state_ui_state           = gr.State(value=AppState.NOT_LOADED)
     # 输入的状态，支持多输出
     state_current_layer_index = gr.State(value=0)      # 已选中的图层的数组index
-    state_original_data = gr.State(value=[])              # 原数据
-    state_data_path = gr.State(value=[])                  # 原数据文件路径
-    state_original_rgb = gr.State(value=[])               # 原数据的RGB代理
-    state_transforms = gr.State(value=[])                 # 对数据的变换
+    state_data_path           = gr.State(value=[])     # 原数据文件路径
+    state_original_data       = gr.State(value=[])     # 原数据
+    state_original_rgb        = gr.State(value=[])     # 原数据的RGB代理
+    state_transforms          = gr.State(value=[])     # 对数据的变换
     # 输出内容状态，保持单个
-    state_processed_data = gr.State(value=None)           # 处理后的数据
-    state_selected_location = gr.State(value=[])          # 已选择的光谱XY坐标点 
-    state_spectral_figure = gr.State(value=None)          # 已选择的光谱的绘图 
+    state_processed_data      = gr.State(value=None)   # 处理后的数据
+    state_selected_location   = gr.State(value=[])     # 已选择的光谱XY坐标点 
+    state_spectral_figure     = gr.State(value=None)   # 已选择的光谱的绘图 
 
 
     with gr.Tab(i18n("hsi_processing.tab_title"), id="hsi_preprocessing_toolkit"):
         with gr.Row():
             with gr.Column():
                 with gr.Column():
-                    current_layer_index_slider = gr.Slider(
+                    # current_layer_index_slider = gr.Slider(
+                    #     label=i18n("hsi_processing.current_layer"),
+                    #     minimum=0,
+                    #     maximum=3,
+                    #     step=1,
+                    #     value=0
+                    # )
+                    current_layer_radio = gr.Radio(
                         label=i18n("hsi_processing.current_layer"),
-                        minimum=0,
-                        maximum=3,
-                        step=1,
-                        value=0
+                        choices=["0 Empty",],
+                        value="0 Empty",
+                        type='index'
                     )
+                    # with gr.Row(variant="compact"):
+                    #     @gr.render(inputs=[current_layer_index_slider, state_data_path])
+                    #     def render_layer_selector(current_layer, state_data_path):
+                    #         for data_path in state_ui_state:
+                    #             radio_button = gr.Radio()
+
+
                 with gr.Accordion(i18n("hsi_processing.load")) as load_panel:
                     gr.Markdown(i18n("hsi_processing.upload_instructions"))
                     with gr.Row():
@@ -339,7 +363,7 @@ def HSIProcessingTab():
                     dat_files = gr.File(
                         label=i18n("hsi_processing.data_files"),
                         file_count="multiple",
-                        type="filepath",
+                        type="filepath"
                     )
                     manual_normalize = gr.Checkbox(
                         label=i18n("hsi_processing.manual_normalize"),
@@ -487,7 +511,7 @@ def HSIProcessingTab():
                             variant="primary",
                         )
 
-            with gr.Column():
+            with gr.Column(scale=2):
                 with gr.Column(variant="panel"):
                     gr.Markdown(f"## {i18n('hsi_processing.output_results')}")   
                     preview_img = gr.Image(label=i18n("hsi_processing.preview"), format="png", height="auto", width="auto", interactive=False)
@@ -501,12 +525,12 @@ def HSIProcessingTab():
         reload_btn.click(
             fn=gr_load,
             inputs=[state_current_layer_index, state_transforms, state_original_rgb, state_original_data, state_data_path, dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],
-            outputs=[state_transforms, state_original_rgb, state_original_data, state_data_path, state_app_state]
+            outputs=[state_transforms, state_original_rgb, state_original_data, state_data_path, state_ui_state]
         )
         reset_loaded_btn.click(
             fn=lambda : ([],[],[],AppState.NOT_LOADED), # TODO: add logging info
             inputs=[],
-            outputs=[state_original_rgb, state_original_data, state_data_path, state_app_state]
+            outputs=[state_original_rgb, state_original_data, state_data_path, state_ui_state]
         )
         convert_btn.click(
             fn=gr_convert,
@@ -516,7 +540,7 @@ def HSIProcessingTab():
                 state_original_data, state_data_path,
                 mat_dtype, output_format, mat_key, compress_mat
             ],
-            outputs=[state_processed_data ,mat_file_output, state_app_state]
+            outputs=[state_processed_data ,mat_file_output, state_ui_state]
         )
 
         # 实时更新state_transforms。
@@ -530,14 +554,18 @@ def HSIProcessingTab():
         state_transforms.change(
             fn=gr_composite,
             inputs=[state_original_rgb, state_transforms],
-            outputs=[preview_img, state_app_state]
+            outputs=[preview_img, state_ui_state]
         )
         # 绑定图层ID滑块
-        current_layer_index_slider.change(
-            fn = lambda x: x,
-            inputs=[current_layer_index_slider],
+        state_data_path.change(
+            fn = gr_on_state_data_path_changed,
+            inputs=[state_data_path, state_current_layer_index, current_layer_radio],
+            outputs=[current_layer_radio],
+        )
+        current_layer_radio.change(
+            fn = lambda x:x,
+            inputs=[current_layer_radio],
             outputs=[state_current_layer_index]
-
         )
 
         # ------------
@@ -545,14 +573,14 @@ def HSIProcessingTab():
             fn=gr_on_state_current_layer_index_changed,
             inputs=[state_current_layer_index, state_transforms, state_original_data],
             outputs=[
-                crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y
+                crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y, state_ui_state, dat_files
             ]
         )
         state_original_data.change(
             fn=gr_on_state_current_layer_index_changed,
             inputs=[state_current_layer_index, state_transforms, state_original_data],
             outputs=[
-                crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y
+                crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y, state_ui_state, dat_files
             ]
         )
         # ------------
@@ -576,16 +604,16 @@ def HSIProcessingTab():
         state_original_rgb.change(
             fn=gr_composite,
             inputs=[state_original_rgb, state_transforms],
-            outputs=[preview_img, state_app_state]
+            outputs=[preview_img, state_ui_state]
         )
-        state_app_state.change(
+        state_ui_state.change(
             fn=lambda x: (
                 gr.update(visible=True, open=(x==AppState.NOT_LOADED)),
                 gr.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
                 gr.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
-                gr.update(visible=x==AppState.COVERTED,   open=(x==AppState.COVERTED))
-            ),
-            inputs=[state_app_state],
+                gr.update(visible=x!=AppState.NOT_LOADED,   open=(x==AppState.COVERTED)) # Should be x==AppState.COVERTED, just in case for potentional bugs
+            ), 
+            inputs=[state_ui_state],
             outputs=[load_panel, preview_panel, convert_panel, plot_panel]
         )
 

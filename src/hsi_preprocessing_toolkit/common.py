@@ -161,4 +161,4 @@ logging.basicConfig(
 )
 
 # 初始化完成
-LOGGER.info(f"Initalized. {DEBUG=}, {CONSTS['name']} v{VERSION}, Gradio v{gr.__version__}, Python v{platform.python_version()} on {platform.platform()}")
+LOGGER.info(f"Initalized. {DEBUG=}, {MULTI_USER=}, {CONSTS['name']} v{VERSION}, Gradio v{gr.__version__}, Python v{platform.python_version()} on {platform.platform()}")

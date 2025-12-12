@@ -38,6 +38,9 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 > **TIPS**: It's not recommend to install CLI tools directly with pip, please use [uv tool](https://docs.astral.sh/uv/guides/tools/) or [pipx](https://pipx.pypa.io/) to install python applications in isolated environments.
 
 
+## Document
+
+
 ## Credit
 1. [uv](https://docs.astral.sh/uv/) for providing a new reliable solution for Python application distribution.  
 2. `gradio` for modern Python Data Science UI 

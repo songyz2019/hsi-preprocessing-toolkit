@@ -40,7 +40,7 @@ def ScannerCalcTab():
                 h = gr.Number(label="物距 Distance (m)", value=0.432, precision=3)
                 delta_t = gr.Number(label="帧间隔 Frame Period (ms)", value=100)
                 btn = gr.Button("计算", variant="primary")
-            with gr.Column(variant="panel"):
+            with gr.Column(variant="panel", scale=2):
                 gr.Markdown("### 计算结果")
                 pulse_freq = gr.Number(label="脉冲频率 (Hz)", interactive=False, precision=1)
                 v = gr.Number(label="推扫速度 (mm/s)", interactive=False, precision=2)
