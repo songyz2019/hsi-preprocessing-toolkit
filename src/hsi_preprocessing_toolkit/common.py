@@ -5,33 +5,19 @@ import os
 import importlib.metadata
 import platform
 
-# 常量
-CONSTS = dict(
-    name = "hsi-preprocessing-toolkit", # This should be *EXACTLY SAME* as 'name' in pyproject.tom
-    homepage_url = "https://github.com/songyz2019/hsi-preprocessing-toolkit",
-)
+# 全局信息
+APP_NAME='hsi-preprocessing-toolkit'
+APP_VERSION = importlib.metadata.version(APP_NAME)
+
+# 全局参数
+DEBUG = os.environ.get('HPT_DEBUG','FALSE').upper() in ['1', 'TRUE', 'YES']
+MULTI_USER = os.environ.get('HPT_MULTI_USER','FALSE').upper() in ['1', 'TRUE', 'YES']
 
 # I18N
 TRANSLATION = {
     'en': {
         "about.tab_title": "About",
         "about.title": "HSI Preprocessing Toolkit",
-        "about.description": "A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset",
-        "about.homepage": "主页",
-        "about.license": """Copyright (C) 2025  songyz2019
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
 
         "hsi_processing.tab_title": "HSI Processing",
         "hsi_processing.load": "Load",
@@ -78,15 +64,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
         "hsi_processing.applied_transforms": "Transforms Done",
         "hsi_processing.no_converted_data_for_clicking": "No transforms applied data, apply transforms first",
 
-
         "scanner_calc.tab_title": "Scanner Parameters",
-        "gradio_server_connection_checker.connection_lost": "Server Connection Lost"
     },
     'zh-CN' : {
         "about.tab_title": "关于",
         "about.title": "HPT高光谱处理工具箱",
-        "about.description": "A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset",
-        "about.homepage": "主页",
+
         "hsi_processing.tab_title": "高光谱图像处理",
         "hsi_processing.current_layer": "选中图层",
         "hsi_processing.load": "加载",
@@ -133,18 +116,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.""",
         "hsi_processing.no_converted_data_for_clicking": "没有应用变换后的数据,请先应用变换",
 
         "scanner_calc.tab_title": "推扫仪计算",
-        "gradio_server_connection_checker.connection_lost": "连接已断开",
     }
 }
-
 i18n = gr.I18n(**TRANSLATION)
-
-# 版本
-VERSION = importlib.metadata.version(CONSTS['name'])
-
-# 调试
-DEBUG = os.environ.get('HPT_DEBUG','FALSE').upper() in ['1', 'TRUE', 'YES']
-MULTI_USER = os.environ.get('HPT_MULTI_USER','FALSE').upper() in ['1', 'TRUE', 'YES']
 
 # 日志
 LOGGER = logging.getLogger(TRANSLATION['en']['about.title']) # 全局唯一LOGGER
@@ -160,4 +134,4 @@ logging.basicConfig(
 )
 
 # 初始化完成
-LOGGER.info(f"Initalized. {DEBUG=}, {MULTI_USER=}, {CONSTS['name']} v{VERSION}, Gradio v{gr.__version__}, Python v{platform.python_version()} on {platform.platform()}")
+LOGGER.info(f"{APP_NAME} v{APP_VERSION} initalized. {DEBUG=} {MULTI_USER=} Gradio=v{gr.__version__} Python=v{platform.python_version()} OS={platform.platform()}")

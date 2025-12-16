@@ -308,21 +308,20 @@ DEFAULT_TRANSFORM = {
 }
 
 def HSIProcessingTab():
-    # 应用整体状态
-    state_ui_state           = gr.State(value=AppState.NOT_LOADED)
-    # 输入的状态，支持多输出
-    state_current_layer_index = gr.State(value=0)      # 已选中的图层的数组index
-    state_data_path           = gr.State(value=[])     # 原数据文件路径
-    state_original_data       = gr.State(value=[])     # 原数据
-    state_original_rgb        = gr.State(value=[])     # 原数据的RGB代理
-    state_transforms          = gr.State(value=[])     # 对数据的变换
-    # 输出内容状态，保持单个
-    state_processed_data      = gr.State(value=None)   # 处理后的数据
-    state_selected_location   = gr.State(value=[])     # 已选择的光谱XY坐标点 
-    state_spectral_figure     = gr.State(value=None)   # 已选择的光谱的绘图 
-
-
     with gr.Tab(i18n("hsi_processing.tab_title"), id="hsi_preprocessing_toolkit"):
+        # 应用整体状态
+        state_ui_state           = gr.State(value=AppState.NOT_LOADED)
+        # 输入的状态，支持多输出
+        state_current_layer_index = gr.State(value=0)      # 已选中的图层的数组index
+        state_data_path           = gr.State(value=[])     # 原数据文件路径
+        state_original_data       = gr.State(value=[])     # 原数据
+        state_original_rgb        = gr.State(value=[])     # 原数据的RGB代理
+        state_transforms          = gr.State(value=[])     # 对数据的变换
+        # 输出内容状态，保持单个
+        state_processed_data      = gr.State(value=None)   # 处理后的数据
+        state_selected_location   = gr.State(value=[])     # 已选择的光谱XY坐标点 
+        state_spectral_figure     = gr.State(value=None)   # 已选择的光谱的绘图 
+
         with gr.Row():
             with gr.Column():
                 with gr.Column():
