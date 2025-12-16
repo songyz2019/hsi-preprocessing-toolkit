@@ -22,8 +22,10 @@ def _record_to_html(record: logging.LogRecord) -> str:
     return f'<span style="color:{color}">{line}</span>'
 
 
-def records_to_html(records: Iterable[logging.LogRecord], desc_time: bool = True) -> str:
+def records_to_html(records: Iterable[logging.LogRecord], desc_time: bool = True, with_pre_tag=False) -> str:
     if desc_time:
         records = reversed(records)
-    lines = [_record_to_html(r) for r in records]
-    return "\n".join(lines)
+    lines = "\n".join([ _record_to_html(r) for r in records ])
+    if with_pre_tag:
+        lines = "<pre style='height: 20em; overflow: visible;'>" + lines + "</pre>"
+    return lines

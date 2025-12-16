@@ -4,7 +4,7 @@ from .page.scanner_calc import ScannerCalcTab
 from .page.about import AboutTab
 from .page.hsi_preprocessing import HSIProcessingTab
 from .component.create_logger import create_gr_logger
-from .common import i18n, DEBUG, MULTI_USER, LOGGER_MEMORY_HANDLER
+from .common import i18n, DEBUG, MULTI_USER, LOGGER_MEMORY_HANDLER, CONSTS
 
 
 def main():
@@ -15,14 +15,14 @@ def main():
         button_primary_background_fill_hover="#30A8A0",
     )
 
-    with gr.Blocks(title=i18n("about.title")) as demo:
+    with gr.Blocks(title=CONSTS['name'], theme=theme) as demo: # title=i18n("about.title")
         HSIProcessingTab()
         ScannerCalcTab()
         AboutTab()
         if not MULTI_USER:
             create_gr_logger(LOGGER_MEMORY_HANDLER)
 
-    demo.launch(debug=DEBUG, share=False, inbrowser=True, i18n=i18n, favicon_path="asset/icon.ico", theme=theme)
+    demo.launch(debug=DEBUG, share=False, inbrowser=True, i18n=i18n, favicon_path="asset/icon.ico") # , theme=theme
 
 
 if __name__ == "__main__":

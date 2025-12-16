@@ -3,7 +3,6 @@ import logging
 import logging.handlers
 import os
 import importlib.metadata
-import sys
 import platform
 
 # 常量

@@ -278,7 +278,7 @@ def gr_on_state_current_layer_index_changed(state_current_layer_index, state_tra
         trans = state_transforms[state_current_layer_index]
         shape = state_original_data[state_current_layer_index].shape
         ui_state = AppState.LOADED
-        dat_files = gr.update()
+        dat_files = gr.skip()
 
     crop_top, crop_left, crop_bottom, crop_right = trans['crop']
     rotate_deg = trans['rotation']
@@ -548,13 +548,13 @@ def HSIProcessingTab():
             component.change(
                 fn = gr_update_transforms,
                 inputs=[state_transforms, state_current_layer_index, crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y],
-                outputs=[state_transforms]
+                outputs=[state_transforms],
             )
         # state_transforms更新会触发重新合成
         state_transforms.change(
             fn=gr_composite,
             inputs=[state_original_rgb, state_transforms],
-            outputs=[preview_img, state_ui_state]
+            outputs=[preview_img, state_ui_state],
         )
         # 绑定图层ID滑块
         state_data_path.change(
@@ -574,7 +574,7 @@ def HSIProcessingTab():
             inputs=[state_current_layer_index, state_transforms, state_original_data],
             outputs=[
                 crop_top, crop_left, crop_bottom, crop_right, rotate_deg, offset_x, offset_y, state_ui_state, dat_files
-            ]
+            ],
         )
         state_original_data.change(
             fn=gr_on_state_current_layer_index_changed,
@@ -588,11 +588,11 @@ def HSIProcessingTab():
         preview_img.select(
             fn=gr_on_img_clicked,
             inputs=[state_spectral_figure, state_processed_data, state_selected_location, wavelength_from, wavelength_to, plot_hint],
-            outputs=[spectral_plot, state_spectral_figure, state_selected_location]
+            outputs=[spectral_plot, state_spectral_figure, state_selected_location],
         )
         clear_plot_btn.click(
             fn=lambda: (None, None, []),
-            outputs=[spectral_plot, state_spectral_figure, state_selected_location]
+            outputs=[spectral_plot, state_spectral_figure, state_selected_location],
         )
         download_select_spectral.click(
             fn=gr_download_selected_spectral,
