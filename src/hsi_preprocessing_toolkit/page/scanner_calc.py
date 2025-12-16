@@ -1,5 +1,7 @@
 import gradio as gr
 from ..common import i18n
+from importlib import resources
+
 
 def _calculate_scanner_parameters(meta_pixel_size, n_wpixel, focal, h, delta_t):
     """All Unit should be in SI unit."""
@@ -21,7 +23,7 @@ def calculate_scanner_parameters(meta_pixel_size, n_wpixel, focal, h, delta_t, p
 def ScannerCalcTab():
     with gr.Tab(i18n("scanner_calc.tab_title")):
         with gr.Row():
-            with gr.Column(variant="panel"):
+            with gr.Column():
                 # unit_scale = gr.Radio(
                 #     label="单位制",
                 #     choices=[ 
@@ -40,12 +42,13 @@ def ScannerCalcTab():
                 h = gr.Number(label="物距 Distance (m)", value=0.432, precision=3)
                 delta_t = gr.Number(label="帧间隔 Frame Period (ms)", value=100)
                 btn = gr.Button("计算", variant="primary")
-            with gr.Column(variant="panel", scale=2):
-                gr.Markdown("### 计算结果")
+            with gr.Column(scale=2):
+                gr.Markdown("## 计算结果")
                 pulse_freq = gr.Number(label="脉冲频率 (Hz)", interactive=False, precision=1)
                 v = gr.Number(label="推扫速度 (mm/s)", interactive=False, precision=2)
                 resolution = gr.Number(label="分辨率 (mm/pixel)", interactive=False, precision=3)
-
+                with gr.Accordion("原理图", open=False):
+                    gr.Image(resources.files("hsi_preprocessing_toolkit.asset.page").joinpath("calc_formula.png"), interactive=False, container=False, show_label=False)
             btn.click(
                 calculate_scanner_parameters,
                 inputs=[meta_pixel_size, n_wpixel, focal, h, delta_t, pulse_per_mm],
