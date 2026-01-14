@@ -2,6 +2,8 @@ from scipy.ndimage import rotate
 import numpy as np
 from copy import deepcopy
 from .common import LOGGER
+import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
 
 # Return A HWC Image, the C should work with both RGB and HSI
 def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
@@ -38,3 +40,24 @@ def composite_img(imgs :list[np.ndarray], transforms:list[dict]):
         h,w,_ = img.shape
         canvas[x:x+h, y:y+w] = img
     return canvas
+
+
+def compose_bread_edge(hsi: np.ndarray) -> (plt.Figure, plt.Figure): # HWC
+    top = hsi[0,:,:]
+    right = hsi[:,0,:]
+
+    top_fig = plt.figure()
+    top_im = plt.imshow(top, cmap='viridis')
+    plt.axis('off')
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    # top_tr = mtransforms.Affine2D()
+    # top_tr.rotate_deg(45).scale(1, 0.5)
+    # top_im.set_transform(top_tr)
+    # top_im.set_clip_on(False)
+
+    right_fig = plt.figure()
+    plt.imshow(right, cmap='viridis')
+    plt.axis('off')
+    plt.margins(0, 0)
+    return top_fig, right_fig
+    

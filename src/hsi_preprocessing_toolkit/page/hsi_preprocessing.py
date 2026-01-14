@@ -12,7 +12,7 @@ import gradio.utils
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
-from ..algorithm import composite_img
+from ..algorithm import composite_img, compose_bread_edge
 from ..common import i18n, LOGGER, TRANSLATION
 import logging
 
@@ -295,10 +295,10 @@ def gr_on_state_current_layer_index_changed(state_current_layer_index, state_tra
 
 def gr_on_state_data_path_changed(state_data_path, state_current_layer_index, current_layer_radio):
     choices = [f"{i} "+(p.name if p else "Empty") for i,p in enumerate(state_data_path+[None])]
-    LOGGER.info(f"state_data_path_changed. {choices=}")
+    new_value = choices[state_current_layer_index]
+    LOGGER.info(f"state_data_path_changed. {choices=} {new_value=}")
     # 更新UI
-    current_layer_radio = gr.update( value=choices[state_current_layer_index], choices=choices )
-    return current_layer_radio
+    return gr.update( choices=choices, value=new_value ) # , 
 
 
 DEFAULT_TRANSFORM = {
@@ -335,7 +335,7 @@ def HSIProcessingTab():
                     current_layer_radio = gr.Radio(
                         label=i18n("hsi_processing.current_layer"),
                         choices=["0 Empty",],
-                        value="0 Empty",
+                        # value="0 Empty",
                         type='index'
                     )
                     # with gr.Row(variant="compact"):
@@ -510,6 +510,19 @@ def HSIProcessingTab():
                             variant="primary",
                         )
 
+                with gr.Accordion("面包边生成",visible=True) as cube_bread_edge:
+                    right_edge_plot = gr.Plot(
+                        label="上面",
+                        visible=True,
+                        # x="Wavelength", y="Reflectance",
+                        # height=400, width=600,
+                    )
+                    top_edge_plot = gr.Plot(
+                        label="右面",
+                        visible=True,
+                    )
+                    
+
             with gr.Column(scale=2):
                 with gr.Column(variant="panel"):
                     gr.Markdown(f"## {i18n('hsi_processing.output_results')}")   
@@ -614,6 +627,12 @@ def HSIProcessingTab():
             ), 
             inputs=[state_ui_state],
             outputs=[load_panel, preview_panel, convert_panel, plot_panel]
+        )
+
+        state_processed_data.change(
+            fn=compose_bread_edge,
+            inputs=[state_processed_data],
+            outputs=[top_edge_plot, right_edge_plot]
         )
 
         # 转置
