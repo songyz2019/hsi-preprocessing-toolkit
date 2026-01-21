@@ -1,7 +1,8 @@
 @echo off
 
 REM CONFIGS
-set "PACKAGE=hsi-preprocessing-toolkit==2.2.0"
+set "PACKAGE=hsi-preprocessing-toolkit"
+REM use "PACKAGE=hsi-preprocessing-toolkit==2.2.1" to fix version
 set "EXECUTABLE=hsi_preprocessing_toolkit"
 set "UV_PYTHON=3.13"
 set "UV_MANAGED_PYTHON=1"
