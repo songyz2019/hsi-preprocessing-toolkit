@@ -12,7 +12,7 @@ import gradio.utils
 from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
-from ..algorithm import composite_img, compose_bread_edge
+from ..algorithm import composite_img, compose_hsi_cube
 from ..common import i18n, LOGGER, TRANSLATION, DEBUG
 import logging
 
@@ -511,6 +511,10 @@ def HSIProcessingTab():
                         )
 
                 with gr.Accordion(i18n('hsi_processing.spectral_profiles'),visible=False) as spectral_profile_panel:
+                    hsi_cube_image = gr.Image(
+                        label=i18n('hsi_processing.spectral_profiles.hsi_cube'),
+                        format="png", height="auto", width="auto", interactive=False
+                    )
                     x_lambda_image = gr.Image(
                         label=i18n('hsi_processing.spectral_profiles.x_lambda_plane'),
                         format="png", height="auto", width="auto", interactive=False
@@ -522,11 +526,7 @@ def HSIProcessingTab():
                     generate_spectral_profiles = gr.Button(
                         i18n('hsi_processing.spectral_profiles.generate')
                     )
-                    generate_spectral_profiles.click(
-                        fn=compose_bread_edge,
-                        inputs=[state_processed_data],
-                        outputs=[y_lambda_plane, x_lambda_image]
-                    )
+
                                 
 
             with gr.Column(scale=2):
@@ -540,6 +540,11 @@ def HSIProcessingTab():
                     )
 
         # 回调函数   
+        generate_spectral_profiles.click(
+            fn=compose_hsi_cube,
+            inputs=[state_processed_data, preview_img],
+            outputs=[hsi_cube_image, y_lambda_plane, x_lambda_image]
+        )
         reload_btn.click(
             fn=gr_load,
             inputs=[state_current_layer_index, state_transforms, state_original_rgb, state_original_data, state_data_path, dat_files, input_format, input_mat_key, manual_normalize, normalize_min, normalize_max, wavelength_from, wavelength_to],

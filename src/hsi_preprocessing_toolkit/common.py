@@ -80,6 +80,8 @@ TRANSLATION = {
         "hsi_processing.spectral_profiles.generate": "Generate Spectral Profiles",
         "hsi_processing.spectral_profiles.x_lambda_plane": "x-λ",
         "hsi_processing.spectral_profiles.y_lambda_plane": "y-λ",
+        "hsi_processing.spectral_profiles.hsi_cube": "HSI Cube",
+
 
         "scanner_calc.tab_title": "Scanner Parameters",
     },
@@ -136,6 +138,7 @@ TRANSLATION = {
         "hsi_processing.spectral_profiles.generate": "生成光谱剖面",
         "hsi_processing.spectral_profiles.x_lambda_plane": "x-λ剖面",
         "hsi_processing.spectral_profiles.y_lambda_plane": "y-λ剖面",
+        "hsi_processing.spectral_profiles.hsi_cube": "光谱立方体",
 
         "scanner_calc.tab_title": "推扫仪计算",
     }
