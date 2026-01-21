@@ -2,7 +2,7 @@
     
 A Hyperspectral Image Preprocessing Toolkit from HSI Camera to Machine Learning Dataset.
 
-## 帮助
+## Help
 - [Homepage](https://github.com/songyz2019/hsi-preprocessing-toolkit)
 - [BUG Report](https://github.com/songyz2019/hsi-preprocessing-toolkit/issues)
 - [Help](https://github.com/songyz2019/hsi-preprocessing-toolkit/wiki)

@@ -14,10 +14,23 @@ DEBUG = os.environ.get('HPT_DEBUG','FALSE').upper() in ['1', 'TRUE', 'YES']
 MULTI_USER = os.environ.get('HPT_MULTI_USER','FALSE').upper() in ['1', 'TRUE', 'YES']
 
 # I18N
+from importlib import resources
+from string import Template
+def _load_about_md(lang :str):
+    if lang.startswith('zh'):
+        lang = 'zh'
+    else:
+        lang = 'en'
+    text = resources.files("hsi_preprocessing_toolkit.asset.page").joinpath(f"about.{lang}.md").read_text(encoding="utf-8")
+    return Template(text).safe_substitute(
+        VERSION=APP_VERSION
+    )
+
 TRANSLATION = {
     'en': {
         "about.tab_title": "About",
         "about.title": "HSI Preprocessing Toolkit",
+        "about.content": _load_about_md('en'),
 
         "hsi_processing.tab_title": "HSI Processing",
         "hsi_processing.load": "Load",
@@ -69,6 +82,7 @@ TRANSLATION = {
     'zh-CN' : {
         "about.tab_title": "关于",
         "about.title": "HPT高光谱处理工具箱",
+        "about.content": _load_about_md('zh'),
 
         "hsi_processing.tab_title": "高光谱图像处理",
         "hsi_processing.current_layer": "选中图层",
