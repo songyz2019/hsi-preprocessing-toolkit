@@ -107,7 +107,7 @@ def compose_hsi_cube(hsi: np.ndarray, front: np.ndarray) -> (np.ndarray, np.ndar
     output HWC,HWC,HWC
     '''
     top   = _min_max_normalize(hsi[0,:,:])   # W C, 有宽度W和深度，是侧面
-    right = _min_max_normalize(hsi[:,0,:])   # H C
+    right = _min_max_normalize(hsi[:,-1,:])   # H C
     top   = compose_spectral_profile(top)    # W C 3
     right = compose_spectral_profile(right)  # H C 3 
 
