@@ -13,7 +13,7 @@ from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
 from ..algorithm import composite_img, compose_bread_edge
-from ..common import i18n, LOGGER, TRANSLATION
+from ..common import i18n, LOGGER, TRANSLATION, DEBUG
 import logging
 
 class AppState(Enum):
@@ -510,18 +510,24 @@ def HSIProcessingTab():
                             variant="primary",
                         )
 
-                with gr.Accordion("面包边生成",visible=True) as cube_bread_edge:
-                    right_edge_plot = gr.Plot(
-                        label="上面",
-                        visible=True,
-                        # x="Wavelength", y="Reflectance",
-                        # height=400, width=600,
+                with gr.Accordion(i18n('hsi_processing.spectral_profiles'),visible=False) as spectral_profile_panel:
+                    x_lambda_image = gr.Image(
+                        label=i18n('hsi_processing.spectral_profiles.x_lambda_plane'),
+                        format="png", height="auto", width="auto", interactive=False
                     )
-                    top_edge_plot = gr.Plot(
-                        label="右面",
-                        visible=True,
+                    y_lambda_plane = gr.Image(
+                        label=i18n('hsi_processing.spectral_profiles.y_lambda_plane'),
+                        format="png", height="auto", width="auto", interactive=False
                     )
-                    
+                    generate_spectral_profiles = gr.Button(
+                        i18n('hsi_processing.spectral_profiles.generate')
+                    )
+                    generate_spectral_profiles.click(
+                        fn=compose_bread_edge,
+                        inputs=[state_processed_data],
+                        outputs=[y_lambda_plane, x_lambda_image]
+                    )
+                                
 
             with gr.Column(scale=2):
                 with gr.Column(variant="panel"):
@@ -623,17 +629,14 @@ def HSIProcessingTab():
                 gr.update(visible=True, open=(x==AppState.NOT_LOADED)),
                 gr.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
                 gr.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
-                gr.update(visible=x!=AppState.NOT_LOADED,   open=(x==AppState.COVERTED)) # Should be x==AppState.COVERTED, just in case for potentional bugs
+                gr.update(visible=(x==AppState.COVERTED), open=(x==AppState.COVERTED)), 
+                gr.update(visible=(x==AppState.COVERTED), open=(x==AppState.COVERTED))
             ), 
             inputs=[state_ui_state],
-            outputs=[load_panel, preview_panel, convert_panel, plot_panel]
+            outputs=[load_panel, preview_panel, convert_panel, plot_panel, spectral_profile_panel]
         )
 
-        state_processed_data.change(
-            fn=compose_bread_edge,
-            inputs=[state_processed_data],
-            outputs=[top_edge_plot, right_edge_plot]
-        )
+
 
         # 转置
         # input_format.change(

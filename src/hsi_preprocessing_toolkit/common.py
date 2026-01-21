@@ -76,6 +76,10 @@ TRANSLATION = {
         "hsi_processing.applying_transforms": "Applying Transforms...",
         "hsi_processing.applied_transforms": "Transforms Done",
         "hsi_processing.no_converted_data_for_clicking": "No transforms applied data, apply transforms first",
+        "hsi_processing.spectral_profiles": "Spectral Profiles",
+        "hsi_processing.spectral_profiles.generate": "Generate Spectral Profiles",
+        "hsi_processing.spectral_profiles.x_lambda_plane": "x-λ",
+        "hsi_processing.spectral_profiles.y_lambda_plane": "y-λ",
 
         "scanner_calc.tab_title": "Scanner Parameters",
     },
@@ -128,6 +132,10 @@ TRANSLATION = {
         "hsi_processing.applying_transforms": "应用变换中...",
         "hsi_processing.applied_transforms": "变换完成",
         "hsi_processing.no_converted_data_for_clicking": "没有应用变换后的数据,请先应用变换",
+        "hsi_processing.spectral_profiles": "光谱剖面",
+        "hsi_processing.spectral_profiles.generate": "生成光谱剖面",
+        "hsi_processing.spectral_profiles.x_lambda_plane": "x-λ剖面",
+        "hsi_processing.spectral_profiles.y_lambda_plane": "y-λ剖面",
 
         "scanner_calc.tab_title": "推扫仪计算",
     }

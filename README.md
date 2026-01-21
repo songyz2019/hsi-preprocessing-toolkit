@@ -12,14 +12,19 @@
 HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image preprocessing toolset that:
 1. Read the raw data from the HSI camera, and convert it into `.mat` file
 2. Read the `.mat` file
-3. Preview HSI, and convert it to RGB `.png` file
-4. Crop and rotate the HSI and preview in realtime
+3. Preview HSI and convert it to RGB `.png` file
+4. Crop, rotate, transform the HSI and preview in realtime
 5. Select spectrals of interest visually and save them into a `.mat` file
 6. Mix multiple HSI images with layers.
-7. Some other utils
+7. Generate Spectral Profiles for visualization.
+8. Some other utils
 
 
 ## Usage
+### Prerequisites
+1. A Chromium-based browser
+2. A modern OS
+
 ### Manual
 1. Download [hpt.cmd](https://github.com/songyz2019/hsi-preprocessing-toolkit/blob/main/script/hpt.cmd) from GitHub release
 2. Double click the `hpt.cmd` file. 
