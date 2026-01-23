@@ -14,9 +14,11 @@ APP_VERSION = importlib.metadata.version(APP_NAME)
 # 全局参数
 def get_args():
     parser = argparse.ArgumentParser(APP_NAME)
-    parser.add_argument('--debug', default=False, action='store_true')
-    parser.add_argument('--browser', default=False, action='store_true')
-    parser.add_argument('--no-access-token', default=False, action='store_true')
+    parser.add_argument('--debug',           default=False,      action='store_true',                   help='start in debug mode')
+    parser.add_argument('--mode',            default='window',   choices=['window','browser','server'], help='start in a window, browser or as a server')
+    parser.add_argument('--no-access-token', default=False,      action='store_true',                   help='do not use access token for security')
+    parser.add_argument('--host',            default='localhost',                                       help='bind address')
+    parser.add_argument('--port',            default=None,                                              help='bind port')
     arg = parser.parse_args()
     return arg
 ARGS = get_args()

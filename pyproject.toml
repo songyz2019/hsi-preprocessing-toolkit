@@ -9,6 +9,7 @@ dependencies = [
     "gradio>=5.50.0,<6.0.0",
     "matplotlib>=3.10.0",
     "opencv-python>=4.13.0.90",
+    "portpicker>=1.6.0",
     "rasterio>=1.4.0",
     "rs-fusion-datasets>=0.16.0",
     "scipy>=1.16.0",
