@@ -4,14 +4,23 @@ import logging.handlers
 import os
 import importlib.metadata
 import platform
+import secrets
+import argparse
 
 # 全局信息
 APP_NAME='hsi-preprocessing-toolkit'
 APP_VERSION = importlib.metadata.version(APP_NAME)
 
 # 全局参数
-DEBUG = os.environ.get('HPT_DEBUG','FALSE').upper() in ['1', 'TRUE', 'YES']
-MULTI_USER = os.environ.get('HPT_MULTI_USER','FALSE').upper() in ['1', 'TRUE', 'YES']
+def get_args():
+    parser = argparse.ArgumentParser(APP_NAME)
+    parser.add_argument('--debug', default=False, action='store_true')
+    parser.add_argument('--browser', default=False, action='store_true')
+    parser.add_argument('--no-access-token', default=False, action='store_true')
+    arg = parser.parse_args()
+    return arg
+ARGS = get_args()
+
 
 # I18N
 from importlib import resources
@@ -148,15 +157,17 @@ i18n = gr.I18n(**TRANSLATION)
 # 日志
 LOGGER = logging.getLogger(TRANSLATION['en']['about.title']) # 全局唯一LOGGER
 LOGGER_MEMORY_HANDLER :logging.handlers.MemoryHandler|None = None
-if not MULTI_USER:
-    LOGGER_MEMORY_HANDLER = logging.handlers.MemoryHandler(10_000, flushLevel=logging.WARNING) # 用于在UI中显示LOGGING信息
-    LOGGER.addHandler(LOGGER_MEMORY_HANDLER)
+LOGGER_MEMORY_HANDLER = logging.handlers.MemoryHandler(10_000, flushLevel=logging.WARNING) # 用于在UI中显示LOGGING信息
+LOGGER.addHandler(LOGGER_MEMORY_HANDLER)
 
 logging.basicConfig(
-    level=logging.DEBUG if DEBUG else logging.INFO,
+    level=logging.DEBUG if ARGS.debug else logging.INFO,
     format='[%(levelname)s %(asctime)s] %(name)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+ACCESS_TOKEN = None if ARGS.no_access_token else secrets.token_hex(16) 
+
+
 # 初始化完成
-LOGGER.info(f"{APP_NAME} v{APP_VERSION} initalized. {DEBUG=} {MULTI_USER=} Gradio=v{gr.__version__} Python=v{platform.python_version()} OS={platform.platform()}")
+LOGGER.info(f"{APP_NAME} v{APP_VERSION} initalized. DEBUG={ARGS.debug} Gradio=v{gr.__version__} Python=v{platform.python_version()} OS={platform.platform()}")

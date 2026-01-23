@@ -6,9 +6,17 @@ from .page.scanner_calc import ScannerCalcTab
 from .page.about import AboutTab
 from .page.hsi_preprocessing import HSIProcessingTab
 from .component.create_logger import create_gr_logger
-from .common import i18n, DEBUG, MULTI_USER, LOGGER_MEMORY_HANDLER, APP_NAME, LOGGER
+from .common import i18n, ARGS, LOGGER_MEMORY_HANDLER, APP_NAME, LOGGER, ACCESS_TOKEN
 
-
+def auth_func(req):
+    # if ACCESS_TOKEN == req.cookies.get("access_token"):
+    #     return "admin"
+    if ACCESS_TOKEN == req.query_params.get("access_token"):
+        # resp.set_cookie(key="access_token", value=ACCESS_TOKEN, httponly=True, samesite="lax")
+        return 'admin'
+    if ACCESS_TOKEN in req.headers.get("referer", ""):
+        return "admin"
+    return None
 
 def main():
     # Global State
@@ -22,21 +30,26 @@ def main():
         HSIProcessingTab()
         ScannerCalcTab()
         AboutTab()
-        if not MULTI_USER:
-            create_gr_logger(LOGGER_MEMORY_HANDLER)
+        create_gr_logger(LOGGER_MEMORY_HANDLER)
 
     demo.launch(
-        debug=DEBUG, 
+        debug=ARGS.debug, 
         prevent_thread_lock=True, # 不阻塞主线程，配合webui/webbrowser
         share=False, 
         inbrowser=False, 
         i18n=i18n, 
-        favicon_path="asset/icon.ico"
-    )
+        favicon_path="asset/icon.ico",
+        auth_dependency=None if ARGS.no_access_token else auth_func
+    ) 
+
+    access_url = demo.local_url + ( f'?access_token={ACCESS_TOKEN}' if not ARGS.no_access_token else '')
     try:
+        if ARGS.browser:
+            window = None
+            raise Exception('Force using browser')
         from webui import webui
         window = webui.Window()
-        window.show_browser(demo.local_url, webui.browser.ChromiumBased) # 这里的行为有些奇怪，启动成功了但依然会返回false
+        window.show_browser(access_url, webui.browser.ChromiumBased) # 这里的行为有些奇怪，启动成功了但依然会返回false
         LOGGER.info('Launched in webui mode successfully')
         window.set_minimum_size(1024, 768)
         webui.wait() # wait似乎有bug
@@ -45,11 +58,12 @@ def main():
         # demo.close()
         # os._exit(0)
     except Exception as err:
-        window.destroy()
+        if window is not None:
+            window.destroy()
         LOGGER.warning(f'Fallback to browser mode, {err}')
         import webbrowser
-        webbrowser.open_new(demo.local_url)
-        input("Running ...") # quick dirty fix
+        webbrowser.open_new(access_url)
+        input(f"Running on {access_url}...") # quick dirty fix
         
 if __name__ == "__main__":
     main()

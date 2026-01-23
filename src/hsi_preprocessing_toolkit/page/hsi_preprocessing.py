@@ -13,7 +13,7 @@ from rs_fusion_datasets.util.hsi2rgb import _hsi2rgb, hsi2rgb
 from jaxtyping import Float
 from enum import Enum
 from ..algorithm import composite_img, compose_hsi_cube
-from ..common import i18n, LOGGER, TRANSLATION, DEBUG
+from ..common import i18n, LOGGER, TRANSLATION, ARGS
 import logging
 
 class AppState(Enum):
