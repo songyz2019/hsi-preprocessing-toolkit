@@ -286,10 +286,10 @@ def gr_on_state_current_layer_index_changed(state_current_layer_index, state_tra
     
     max_h, max_w = shape[:2]
     LOGGER.info(f"layer_index_changed {state_current_layer_index=} {max_h=}, {max_w=}")
-    update_crop_top = gr.update(value=crop_top, maximum=max_h, minimum=0)
+    update_crop_top =    gr.update(value=crop_top,    maximum=max_h, minimum=0)
     update_crop_bottom = gr.update(value=crop_bottom, maximum=max_h, minimum=0)
-    update_crop_left = gr.update(value=crop_left, maximum=max_w, minimum=0)
-    update_crop_right = gr.update(value=crop_bottom, maximum=max_w, minimum=0)
+    update_crop_left =   gr.update(value=crop_left,   maximum=max_w, minimum=0)
+    update_crop_right =  gr.update(value=crop_bottom, maximum=max_w, minimum=0)
 
     return update_crop_top, update_crop_left, update_crop_bottom, update_crop_right, rotate_deg, offset_x, offset_y, ui_state, dat_files
 
@@ -300,6 +300,33 @@ def gr_on_state_data_path_changed(state_data_path, state_current_layer_index, cu
     # 更新UI
     return gr.update( choices=choices, value=new_value ) # , 
 
+
+def gr_channel_view(state_processed_data : np.ndarray | None, channel_index):
+    if state_processed_data is None:
+        return None
+    _,_,n_channel = state_processed_data.shape
+    channel_index = int(channel_index)
+    if channel_index >= n_channel or channel_index < 0:
+        return None
+    arr = state_processed_data[:,:,channel_index]
+    rng = arr.max()-arr.min()
+    if rng == 0:
+        return arr
+    img = (arr - arr.min())/rng
+    return img
+
+def gr_compose_hsi_cube(state_processed_data, preview_img):
+    cube, top, right = compose_hsi_cube(state_processed_data, preview_img)
+    return gr.update(
+        visible=True,
+        value=cube
+    ), gr.update(
+        visible=True,
+        value=top
+    ), gr.update(
+        visible=True,
+        value=right
+    )
 
 DEFAULT_TRANSFORM = {
     'rotation': 0,
@@ -314,7 +341,7 @@ def HSIProcessingTab():
         # 输入的状态，支持多输出
         state_current_layer_index = gr.State(value=0)      # 已选中的图层的数组index
         state_data_path           = gr.State(value=[])     # 原数据文件路径
-        state_original_data       = gr.State(value=[])     # 原数据
+        state_original_data       = gr.State(value=[])     # 原数据, Float[np.ndarray, 'h w c']
         state_original_rgb        = gr.State(value=[])     # 原数据的RGB代理
         state_transforms          = gr.State(value=[])     # 对数据的变换
         # 输出内容状态，保持单个
@@ -488,6 +515,16 @@ def HSIProcessingTab():
                     )
                     convert_btn  = gr.Button(i18n("hsi_processing.apply_processing"), variant="primary")
                 
+
+            with gr.Column(scale=2):
+                with gr.Column(variant="panel"):
+                    gr.Markdown(f"## {i18n('hsi_processing.output_results')}")   
+                    preview_img = gr.Image(label=i18n("hsi_processing.preview"), format="png", height="auto", width="auto", interactive=False)
+                    mat_file_output = gr.File(
+                        label=i18n("hsi_processing.mat_file"),
+                        type="filepath",
+                        interactive=False
+                    )
                 with gr.Accordion(i18n("hsi_processing.spectral_selection"),visible=False) as plot_panel:
                     gr.Markdown(i18n('hsi_processing.spectral_selection_help'))
                     spectral_plot = gr.Plot(
@@ -509,41 +546,44 @@ def HSIProcessingTab():
                             "Download",
                             variant="primary",
                         )
-
+                with gr.Accordion(i18n('hsi_processing.spectral_channel_view'),visible=False) as spectral_channel_view_panel:
+                    x_y_profile_image_channel = gr.Number(
+                        label=i18n('hsi_processing.spectral_channel_view.channel'),
+                        value=0
+                    )
+                    x_y_profile_image = gr.Image(
+                        label=i18n('hsi_processing.spectral_channel_view.image'),
+                        format="png", height="auto", width="auto", interactive=False
+                    )
+                    x_y_profile_image_channel.change(
+                        fn=gr_channel_view, 
+                        inputs=[state_processed_data, x_y_profile_image_channel],
+                        outputs=[x_y_profile_image]
+                    )
                 with gr.Accordion(i18n('hsi_processing.spectral_profiles'),visible=False) as spectral_profile_panel:
+                    generate_spectral_profiles = gr.Button(
+                        i18n('hsi_processing.spectral_profiles.generate'),
+                        variant="primary",
+                    )
                     hsi_cube_image = gr.Image(
                         label=i18n('hsi_processing.spectral_profiles.hsi_cube'),
-                        format="png", height="auto", width="auto", interactive=False
+                        format="png", height="auto", width="auto", interactive=False, visible=False
                     )
                     x_lambda_image = gr.Image(
                         label=i18n('hsi_processing.spectral_profiles.x_lambda_plane'),
-                        format="png", height="auto", width="auto", interactive=False
+                        format="png", height="auto", width="auto", interactive=False, visible=False
                     )
-                    y_lambda_plane = gr.Image(
+                    y_lambda_image = gr.Image(
                         label=i18n('hsi_processing.spectral_profiles.y_lambda_plane'),
-                        format="png", height="auto", width="auto", interactive=False
-                    )
-                    generate_spectral_profiles = gr.Button(
-                        i18n('hsi_processing.spectral_profiles.generate')
+                        format="png", height="auto", width="auto", interactive=False, visible=False
                     )
 
-                                
-
-            with gr.Column(scale=2):
-                with gr.Column(variant="panel"):
-                    gr.Markdown(f"## {i18n('hsi_processing.output_results')}")   
-                    preview_img = gr.Image(label=i18n("hsi_processing.preview"), format="png", height="auto", width="auto", interactive=False)
-                    mat_file_output = gr.File(
-                        label=i18n("hsi_processing.mat_file"),
-                        type="filepath",
-                        interactive=False
-                    )
 
         # 回调函数   
         generate_spectral_profiles.click(
-            fn=compose_hsi_cube,
+            fn=gr_compose_hsi_cube,
             inputs=[state_processed_data, preview_img],
-            outputs=[hsi_cube_image, y_lambda_plane, x_lambda_image]
+            outputs=[hsi_cube_image, y_lambda_image, x_lambda_image]
         )
         reload_btn.click(
             fn=gr_load,
@@ -635,13 +675,12 @@ def HSIProcessingTab():
                 gr.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
                 gr.update(visible=x!=AppState.NOT_LOADED, open=(x in [AppState.LOADED, AppState.PREVIEWED])),
                 gr.update(visible=(x==AppState.COVERTED), open=(x==AppState.COVERTED)), 
+                gr.update(visible=(x==AppState.COVERTED), open=(x==AppState.COVERTED)),
                 gr.update(visible=(x==AppState.COVERTED), open=(x==AppState.COVERTED))
             ), 
             inputs=[state_ui_state],
-            outputs=[load_panel, preview_panel, convert_panel, plot_panel, spectral_profile_panel]
+            outputs=[load_panel, preview_panel, convert_panel, plot_panel, spectral_profile_panel, spectral_channel_view_panel]
         )
-
-
 
         # 转置
         # input_format.change(

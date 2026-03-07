@@ -113,7 +113,10 @@ def compose_hsi_cube(hsi: np.ndarray, front: np.ndarray) -> (np.ndarray, np.ndar
 
     cube = generate_oblique_cube(front, top, right)
 
-    return cube, einops.rearrange(top, 'H C c -> C H c'), einops.rearrange(right, 'H C c -> C H c')
+    top = einops.rearrange(top, 'H C c -> C H c')
+    right = einops.rearrange(right, 'H C c -> C H c')
+
+    return cube, top, right
     
     # top_fig = plt.figure()
     # top_im = plt.imshow(top, cmap='viridis')

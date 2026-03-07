@@ -92,8 +92,10 @@ TRANSLATION = {
         "hsi_processing.spectral_profiles.x_lambda_plane": "x-λ",
         "hsi_processing.spectral_profiles.y_lambda_plane": "y-λ",
         "hsi_processing.spectral_profiles.hsi_cube": "HSI Cube",
-
-
+        "hsi_processing.spectral_channel_view": "Channel Preview",
+        "hsi_processing.spectral_channel_view.channel": "Channel",
+        "hsi_processing.spectral_channel_view.image": "Preview",
+        
         "scanner_calc.tab_title": "Scanner Parameters",
     },
     'zh-CN' : {
@@ -150,6 +152,9 @@ TRANSLATION = {
         "hsi_processing.spectral_profiles.x_lambda_plane": "x-λ剖面",
         "hsi_processing.spectral_profiles.y_lambda_plane": "y-λ剖面",
         "hsi_processing.spectral_profiles.hsi_cube": "光谱立方体",
+        "hsi_processing.spectral_channel_view": "通道预览",
+        "hsi_processing.spectral_channel_view.channel": "通道",
+        "hsi_processing.spectral_channel_view.image": "预览",
 
         "scanner_calc.tab_title": "推扫仪计算",
     }
