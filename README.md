@@ -51,7 +51,7 @@ hsi_preprocessing_toolkit --help
 
 ## FAQ
 > Q: How is AI utilized in the codebase?  
-> A: We only use AI as a chatbot. We have reviewed every line of code word-for-word, and 99% of he codebase is written by human directly.
+> A: We only use AI as a chatbot. We have reviewed every line of code word-for-word, and 99% of the codebase is written by human directly.
 
 > Q: Is there any security protection?  
 > A: We implement baseline security practices on a best-effort basis. This includes the use of security tokens for authentication and a principle of least privilege (PoLP) design to minimize potential risks.
