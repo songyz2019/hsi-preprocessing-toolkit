@@ -1,13 +1,10 @@
 # HSI Preprocessing Toolkit
 
-
 [![PyPI - Version](https://img.shields.io/pypi/v/hsi-preprocessing-toolkit.svg)](https://pypi.org/project/hsi-preprocessing-toolkit)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/hsi-preprocessing-toolkit)](https://pypi.org/project/hsi-preprocessing-toolkit)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/hsi-preprocessing-toolkit.svg)](https://pypi.org/project/hsi-preprocessing-toolkit)
 ![GitHub Created At](https://img.shields.io/github/created-at/songyz2019/hsi-preprocessing-toolkit)
 ![GitHub License](https://img.shields.io/github/license/songyz2019/hsi-preprocessing-toolkit)
-
-![](asset/screenshot.jpg)
 
 HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image preprocessing toolset that:
 1. Read the raw data directly from HSI cameras, and convert it into `.mat` file
@@ -18,6 +15,12 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 6. Mix multiple HSI images with layers.
 7. Generate Spectral Profiles for visualization.
 8. Some other utils
+
+## Gallery
+![](asset/screenshot.jpg)
+
+---
+![](asset/visualization.webp)
 
 
 ## Installation
