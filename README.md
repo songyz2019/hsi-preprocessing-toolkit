@@ -19,7 +19,7 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 ## Gallery
 ![](asset/screenshot.jpg)
 
-![](asset/visualization-hsi-cube.webp.webp)
+![](asset/visualization-hsi-cube.webp)
 
 ![](asset/visualization-multilayer.webp)
 
