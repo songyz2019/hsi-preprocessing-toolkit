@@ -80,7 +80,7 @@ def generate_oblique_cube(front, top, right):
 
     a = int(d * 0.5 * 0.7071)
     W, H = w + a, h + a
-    canvas = np.zeros((H, W, 3), dtype=np.uint8)
+    canvas = np.ones((H, W, 3), dtype=np.uint8)
 
     # 加减1是为了防止出现缝隙，这也算是一种off by one了...
     canvas_r = cv2.warpAffine(right, 

@@ -17,3 +17,5 @@ main.spec
 *.mat
 
 asset/icon.af
+
+private/
