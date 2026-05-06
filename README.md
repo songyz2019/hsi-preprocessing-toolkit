@@ -6,15 +6,23 @@
 ![GitHub Created At](https://img.shields.io/github/created-at/songyz2019/hsi-preprocessing-toolkit)
 ![GitHub License](https://img.shields.io/github/license/songyz2019/hsi-preprocessing-toolkit)
 
-HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image preprocessing toolset that:
-1. Read the raw data directly from HSI cameras, and convert it into `.mat` file
-2. Read the `.mat` file
-3. Preview HSI and convert it to RGB `.png` file
-4. Crop, rotate, transform the HSI and preview in realtime
-5. Select spectrals of interest visually and save them into a `.mat` file
-6. Mix multiple HSI images with layers.
-7. Generate Spectral Profiles for visualization.
-8. Some other utils
+HSI Preprocessing Toolkit (HPT) is a GUI software designed for seamless preprocessing and visulizing hyperspectral images. It simplifies the transition from raw sensor data to research-ready images with the following features:
+
+- Raw Data Conversion: Directly reads raw data from HSI cameras and exports to `.mat` files.  
+- Real-time Manipulation: Crop, rotate, and transform HSI cubes with instant visual feedback.  
+- Interactive Selection: Isolate specific spectral regions of interest and save them into compact `.mat` files.  
+- Visual Analysis: Preview HSI channels, generate RGB using CIE color matching functions, and plot spectral profiles.  
+- Layer-based Composition: Mix multiple HSI cubes using a layer-based system.  
+
+## Installation
+
+### Option 1: Download, Click and Run
+1. Download [hpt.cmd](https://github.com/songyz2019/hsi-preprocessing-toolkit/blob/main/script/hpt.cmd) from GitHub release
+2. Double click the `hpt.cmd` file. 
+
+### Option 2: Using uv or pip
+1. Install: `pip install hsi-preprocessing-toolkit` or `uv tool install hsi-preprocessing-toolkit`
+2. Start: `hsi_preprocessing_toolkit`
 
 ## Gallery
 ![](asset/screenshot.jpg)
@@ -23,34 +31,10 @@ HSI Preprocessing Toolkit (HPT, formerly HDR2MAT) is a hyperspectral image prepr
 
 ![](asset/visualization-multilayer.webp)
 
-## Installation
-### Prerequisites
-1. A Chromium-based browser
-2. A modern OS
+## Maintaince Status
 
-### Manual
-1. Download [hpt.cmd](https://github.com/songyz2019/hsi-preprocessing-toolkit/blob/main/script/hpt.cmd) from GitHub release
-2. Double click the `hpt.cmd` file. 
+This project is under **passive maintenance**, focusing on critical bugs, security, and documentation. Related issues and PRs are welcomed.
 
-> **TIPS**: Make sure you have internet access during the first start
-
-### Install with uv
-1. Install [uv](https://docs.astral.sh/uv/) directly or with pip: `pip install uv`
-2. Install HPT: `uv tool install hsi-preprocessing-toolkit`
-3. Start HPT: `hsi_preprocessing_toolkit`
-
-### Install with pip
-1. Install HPT: `pip install hsi-preprocessing-toolkit`
-2. Start HPT: `hsi_preprocessing_toolkit`
-
-> **TIPS**: It's not recommend to install CLI tools directly with pip, please use [uv tool](https://docs.astral.sh/uv/guides/tools/) or [pipx](https://pipx.pypa.io/) to install python applications in isolated environments.
-
-
-## Usage
-See help by running:
-```sh
-hsi_preprocessing_toolkit --help
-```
 
 ## FAQ
 > Q: How is AI utilized in the codebase?  
@@ -59,21 +43,11 @@ hsi_preprocessing_toolkit --help
 > Q: Is there any security protection?  
 > A: We implement baseline security practices on a best-effort basis. This includes the use of security tokens for authentication and a principle of least privilege (PoLP) design to minimize potential risks.
 
-## Contributions
-We welcome all contributions. For obtaining, providing feedback and contributing to this project, follow the common practice and [GitHub Docs](https://docs.github.com/).
-
-## Credit
-1. [uv](https://docs.astral.sh/uv/) for providing a new reliable solution for Python application distribution.  
-2. `gradio` for modern Python Data Science UI 
-3. `rasterio` for remote sensing data reading
-4. `scipy`, `numpy`, `matplotlib` and `einops`
-5. For more projects, see `pyproject.toml`
-
 
 ## License
 
 ```text
-Copyright (C) 2025  songyz2019
+Copyright (C) 2025-present  songyz2019
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
