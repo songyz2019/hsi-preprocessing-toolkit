@@ -18,7 +18,7 @@ HSI Preprocessing Toolkit (HPT) is a GUI software designed for seamless preproce
 
 ### Option 1: Setup Package for Windows
 
-1. Download [Setup Package for Windows](https://github.com/songyz2019/hsi-preprocessing-toolkit/releases/download/latest/hpt-setup.exe)
+1. Download [Setup Package for Windows](https://github.com/songyz2019/hsi-preprocessing-toolkit/releases/download/v2.3.0/hpt-setup.exe)
 2.  Double click downloaded `hpt-setup.exe`, **make sure you have Internet access**
 
 <!-- 1. Download [hpt.cmd](https://github.com/songyz2019/hsi-preprocessing-toolkit/blob/main/script/hpt.cmd) from GitHub release
